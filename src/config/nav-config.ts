@@ -8,13 +8,14 @@ export const navGroups: NavGroup[] = [
   {
     label: '',
     items: [
-      { title: "Aujourd'hui", url: '/dashboard', icon: 'today', shortcut: ['a', 'a'], items: [] }
+      { title: "Aujourd'hui", url: '/dashboard', icon: 'today', shortcut: ['a', 'a'], items: [] },
+      { title: 'Saisie rapide', url: '/dashboard/saisie', icon: 'sparkles', shortcut: ['s', 's'], items: [] }
     ]
   },
   {
     label: 'Portefeuille',
     items: [
-      { title: 'Biens', url: '/dashboard/biens', icon: 'bien', shortcut: ['b', 'b'], label: 'Bientôt', items: [] },
+      { title: 'Biens', url: '/dashboard/biens', icon: 'bien', shortcut: ['b', 'b'], items: [] },
       { title: 'Contacts', url: '/dashboard/contacts', icon: 'teams', shortcut: ['c', 'c'], label: 'Bientôt', items: [] },
       { title: 'Rapprochements', url: '/dashboard/rapprochements', icon: 'rapprochement', shortcut: ['r', 'r'], label: 'Bientôt', items: [] }
     ]

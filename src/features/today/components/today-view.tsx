@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Icons } from '@/components/icons';
 import { TopoLines } from '@/components/brand/logo';
@@ -40,7 +41,7 @@ export function TodayView({ firstName }: { firstName: string }) {
           <Button variant='outline' className='h-9'>
             <Icons.add /> Client
           </Button>
-          <Button className='h-9 font-semibold'>
+          <Button className='h-9 font-semibold' nativeButton={false} render={<Link href='/dashboard/saisie' />}>
             <Icons.add /> Nouveau bien
           </Button>
         </div>

@@ -7,7 +7,7 @@ import { moduleDescriptions, navGroups } from '@/config/nav-config';
 
 const modules = navGroups
   .flatMap((g) => g.items)
-  .filter((item) => item.url.startsWith('/dashboard/'))
+  .filter((item) => item.url.startsWith('/dashboard/') && item.label)
   .map((item) => ({ ...item, slug: item.url.replace('/dashboard/', '') }));
 
 export function generateStaticParams() {
