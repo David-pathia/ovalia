@@ -20,7 +20,7 @@ type Row = {
   annee_construction: number | null;
   prix_bien: number | null;
   created_at: string;
-  bien_analyses: { synthese: string | null; points_forts: string[]; details: { a_verifier?: unknown[] } }[];
+  bien_analyses: { synthese: string | null; points_forts: string[]; details: { a_verifier?: { traite?: boolean }[] } }[];
   bien_contacts: { role: string; contacts: { nom: string; prenom: string | null } | null }[];
 };
 
@@ -71,9 +71,13 @@ export default async function BiensPage() {
         {biens.map((b) => {
           const analyse = b.bien_analyses[0];
           const vendeur = b.bien_contacts.find((c) => c.role === 'vendeur')?.contacts;
-          const aVerifier = analyse?.details?.a_verifier?.length ?? 0;
+          const aVerifier = analyse?.details?.a_verifier?.filter((q) => !q.traite).length ?? 0;
           return (
-            <li key={b.id} className='bg-card min-w-0 rounded-2xl border p-4 sm:p-5'>
+            <li key={b.id} className='min-w-0'>
+              <Link
+                href={`/dashboard/biens/${b.id}`}
+                className='bg-card hover:border-cuivre/50 focus-visible:ring-ring block h-full rounded-2xl border p-4 transition-colors focus-visible:ring-2 focus-visible:outline-none sm:p-5'
+              >
               <div className='flex flex-wrap items-start justify-between gap-2'>
                 <div className='min-w-0'>
                   <p className='font-semibold'>
@@ -112,6 +116,7 @@ export default async function BiensPage() {
                   ))}
                 </div>
               ) : null}
+              </Link>
             </li>
           );
         })}
