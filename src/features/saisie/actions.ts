@@ -1,34 +1,22 @@
 'use server';
 
 import Anthropic from '@anthropic-ai/sdk';
-import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { after } from 'next/server';
-import { estimerBien } from '@/lib/estimation/estimer';
+import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
-import { ExtractionSchema, type Extraction } from './schema';
+import { MODEL, anthropicConfigured, demanderTexte, extraireJson } from '@/lib/ai/client';
+import { estimerBien } from '@/lib/estimation/estimer';
+import { BienUpdateSchema, PieceInputSchema, champsManquants, surfacePiece } from '@/features/biens/fields';
+import { AnalyseSchema, ExtractionSchema, VendeurSchema, type Extraction } from './schema';
 import { SYSTEM_PROMPT } from './prompt';
-
-const MODEL = 'claude-opus-5-5';
-
-// Le schéma est donné dans la consigne et la réponse validée ici avec Zod :
-// le format imposé par l'API refusait ce schéma (trop de champs « valeur ou vide »).
-const FORMAT_REPONSE = `Réponds uniquement avec un objet JSON valide, sans texte autour ni bloc de code, conforme à ce schéma JSON :
-${JSON.stringify(z.toJSONSchema(ExtractionSchema))}`;
-
-function extraireJson(texte: string): unknown {
-  const debut = texte.indexOf('{');
-  const fin = texte.lastIndexOf('}');
-  if (debut === -1 || fin <= debut) return null;
-  try {
-    return JSON.parse(texte.slice(debut, fin + 1));
-  } catch {
-    return null;
-  }
-}
 
 export type AnalyseResult = { ok: true; data: Extraction } | { ok: false; error: string };
 export type SaveResult = { ok: true; bienId: string } | { ok: false; error: string };
+
+// Le schéma est donné dans la consigne et la réponse validée ici avec Zod.
+const FORMAT_REPONSE = `Réponds uniquement avec un objet JSON valide, sans texte autour ni bloc de code, conforme à ce schéma JSON :
+${JSON.stringify(z.toJSONSchema(ExtractionSchema))}`;
 
 async function requireUser() {
   const supabase = await createClient();
@@ -45,40 +33,22 @@ export async function analyserNote(note: string): Promise<AnalyseResult> {
   const texte = note.trim();
   if (texte.length < 10) return { ok: false, error: 'La note est trop courte pour être analysée.' };
   if (texte.length > 20000) return { ok: false, error: 'La note dépasse 20 000 caractères.' };
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!anthropicConfigured()) {
     return { ok: false, error: 'La clé ANTHROPIC_API_KEY n’est pas configurée sur le serveur.' };
   }
 
-  // Une clé non rattachée à un espace de travail (sk-ant-usr-…) exige l'en-tête anthropic-workspace-id.
-  const workspaceId = process.env.ANTHROPIC_WORKSPACE_ID;
-  const apiKey = process.env.ANTHROPIC_API_KEY.trim(); // une espace ou un retour à la ligne collé avec la clé la rend invalide
-  const client = new Anthropic({
-    apiKey,
-    ...(workspaceId ? { defaultHeaders: { 'anthropic-workspace-id': workspaceId.trim() } } : {})
-  });
   try {
-    const response = await client.beta.messages.create({
-      model: MODEL,
-      max_tokens: 16000,
-      betas: ['server-side-fallback-2026-07-01'],
-      fallbacks: 'default',
-      output_config: { effort: 'medium' },
-      system: `${SYSTEM_PROMPT}\n\n${FORMAT_REPONSE}`,
-      messages: [{ role: 'user', content: `Note du conseiller :\n\n${texte}` }]
-    });
-
-    if (response.stop_reason === 'refusal') {
+    const { stopReason, texte: reponse } = await demanderTexte(
+      `${SYSTEM_PROMPT}\n\nAnnée en cours : ${new Date().getFullYear()}.\n\n${FORMAT_REPONSE}`,
+      `Note du conseiller :\n\n${texte}`
+    );
+    if (stopReason === 'refusal') {
       return { ok: false, error: 'L’IA a refusé d’analyser cette note. Reformulez-la puis réessayez.' };
     }
-    if (response.stop_reason === 'max_tokens') {
-      return { ok: false, error: 'La réponse de l’IA est incomplète. Réessayez.' };
-    }
-    const texteReponse = response.content
-      .map((block) => (block.type === 'text' ? block.text : ''))
-      .join('');
-    const parsed = ExtractionSchema.safeParse(extraireJson(texteReponse));
+    if (stopReason === 'max_tokens') return { ok: false, error: 'La réponse de l’IA est incomplète. Réessayez.' };
+    const parsed = ExtractionSchema.safeParse(extraireJson(reponse));
     if (!parsed.success) {
-      console.error('Réponse IA non conforme', parsed.error.issues.slice(0, 5), texteReponse.slice(0, 500));
+      console.error('Réponse IA non conforme', parsed.error.issues.slice(0, 5), reponse.slice(0, 500));
       return { ok: false, error: 'La réponse de l’IA n’a pas le bon format. Réessayez.' };
     }
     return { ok: true, data: parsed.data };
@@ -102,45 +72,39 @@ export async function analyserNote(note: string): Promise<AnalyseResult> {
   }
 }
 
-export async function enregistrerBien(payload: Extraction, note: string): Promise<SaveResult> {
+const SaveSchema = z.object({
+  bien: BienUpdateSchema,
+  pieces: z.array(PieceInputSchema),
+  vendeur: VendeurSchema.nullable(),
+  analyse: AnalyseSchema
+});
+
+export async function enregistrerBien(input: unknown, note: string): Promise<SaveResult> {
   const { supabase, user } = await requireUser();
   if (!user) return { ok: false, error: 'Session expirée : reconnectez-vous.' };
 
-  const parsed = ExtractionSchema.safeParse(payload);
-  if (!parsed.success) return { ok: false, error: 'Certaines valeurs sont invalides. Vérifiez la fiche.' };
+  const parsed = SaveSchema.safeParse(input);
+  if (!parsed.success) {
+    const champ = parsed.error.issues[0]?.path.join(' › ');
+    return { ok: false, error: `Valeur invalide${champ ? ` : ${champ}` : ''}. Vérifiez la fiche.` };
+  }
   const { bien, pieces, vendeur, analyse } = parsed.data;
-  if (!bien.type) return { ok: false, error: 'Choisissez le type de bien avant d’enregistrer.' };
+  const { fiche_na: ficheNa, ...valeurs } = bien;
+  if (!valeurs.type) return { ok: false, error: 'Choisissez le type de bien avant d’enregistrer.' };
+  const manquants = champsManquants(valeurs, ficheNa, pieces);
+  if (manquants.length > 0) {
+    return { ok: false, error: `Fiche d’estimation incomplète : ${manquants.length} information(s) manquante(s).` };
+  }
 
   const { data: created, error: bienError } = await supabase
     .from('biens')
     .insert({
-      type: bien.type,
-      transaction: bien.transaction,
+      ...valeurs,
+      fiche_na: ficheNa,
       statut: 'estimation',
-      adresse: bien.adresse,
-      code_postal: bien.code_postal,
-      ville: bien.ville?.toUpperCase() ?? null,
-      surface: bien.surface,
-      surface_terrain: bien.surface_terrain,
-      pieces: bien.pieces,
-      chambres: bien.chambres,
-      etage: bien.etage,
-      nb_etages: bien.nb_etages,
-      annee_construction: bien.annee_construction,
-      prix_bien: bien.prix_bien,
-      dpe_classe: bien.dpe_classe,
-      taxe_fonciere: bien.taxe_fonciere,
-      charges_copro_mensuelles: bien.charges_copro_mensuelles,
-      exterieurs: bien.exterieurs,
-      etat_general: bien.etat_general,
-      suivi_par: (user.user_metadata?.full_name as string | undefined) ?? user.email ?? null,
-      notes: bien.description_courte,
-      laforet_extra: {
-        chauffage: bien.chauffage,
-        equipements: bien.equipements,
-        loyer_potentiel: bien.loyer_potentiel,
-        source: 'saisie_rapide'
-      }
+      ville: typeof valeurs.ville === 'string' ? valeurs.ville.toUpperCase() : null,
+      suivi_par: valeurs.suivi_par ?? (user.user_metadata?.full_name as string | undefined) ?? user.email ?? null,
+      laforet_extra: { source: 'saisie_rapide' }
     })
     .select('id')
     .single();
@@ -158,21 +122,22 @@ export async function enregistrerBien(payload: Extraction, note: string): Promis
     return { ok: false as const, error: 'L’enregistrement a échoué, rien n’a été conservé. Réessayez.' };
   };
 
-  if (pieces.length > 0) {
-    const { error } = await supabase.from('bien_pieces').insert(
-      pieces.map((p, i) => ({ bien_id: bienId, ordre: i, nom: p.nom, surface: p.surface, niveau: p.niveau }))
-    );
+  const releve = pieces.filter((p) => p.nom.trim());
+  if (releve.length > 0) {
+    const { error } = await supabase
+      .from('bien_pieces')
+      .insert(releve.map((p, i) => ({ ...p, surface: surfacePiece(p), bien_id: bienId, ordre: i })));
     if (error) return rollback('bien_pieces.insert', error);
   }
 
-  if (vendeur?.nom) {
+  if (vendeur?.nom.trim()) {
     const { data: contact, error } = await supabase
       .from('contacts')
       .insert({
         civilite: vendeur.civilite,
-        nom: vendeur.nom.toUpperCase(),
+        nom: vendeur.nom.trim().toUpperCase(),
         prenom: vendeur.prenom,
-        email: vendeur.email?.toLowerCase() ?? null,
+        email: vendeur.email?.trim().toLowerCase() || null,
         portable: vendeur.portable,
         telephone_fixe: vendeur.telephone_fixe,
         categories: ['vendeur']
@@ -189,18 +154,18 @@ export async function enregistrerBien(payload: Extraction, note: string): Promis
 
   const { error: analyseError } = await supabase.from('bien_analyses').insert({
     bien_id: bienId,
-    type: 'estimation',
+    type: 'autre',
     note_source: note,
     points_forts: analyse.points_forts,
     points_faibles: analyse.points_faibles,
     synthese: analyse.synthese,
-    details: { a_verifier: analyse.a_verifier, loyer_potentiel: bien.loyer_potentiel },
+    details: { a_verifier: analyse.a_verifier },
     modele: MODEL
   });
   if (analyseError) return rollback('bien_analyses.insert', analyseError);
 
   // Estimation DVF en arrière-plan : la fiche l'affiche dès qu'elle est prête.
-  if (bien.ville || bien.code_postal) {
+  if (valeurs.ville || valeurs.code_postal) {
     after(async () => {
       const res = await estimerBien(supabase, bienId);
       if (!res.ok) console.warn('estimation automatique', bienId, res.error);

@@ -6,20 +6,11 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Icons } from '@/components/icons';
+import { GroupFields, ManquantsPanel, ReleveTable, Section } from './fiche-fields';
 import { cn } from '@/lib/utils';
 import { marquerPointVerifie, mettreAJourBien, supprimerBien } from '../actions';
-import {
-  BIEN_GROUPS,
-  type AVerifier,
-  type BienValues,
-  type FieldDef,
-  type PieceInput,
-  type VendeurInput
-} from '../fields';
+import { BIEN_GROUPS, champsManquants, type AVerifier, type BienValues, type PieceInput, type VendeurInput } from '../fields';
 
 export type Analyse = {
   id: string;
@@ -32,111 +23,10 @@ export type Analyse = {
 
 const fmt = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 });
 
-function toNumber(value: string, int: boolean): number | null {
-  const n = Number(value.replace(',', '.').replace(/\s/g, ''));
-  if (value.trim() === '' || Number.isNaN(n)) return null;
-  return int ? Math.round(n) : n;
-}
-
-function FieldInput({
-  field,
-  value,
-  onChange
-}: {
-  field: FieldDef;
-  value: unknown;
-  onChange: (v: unknown) => void;
-}) {
-  const id = `f-${field.key}`;
-  switch (field.kind) {
-    case 'select':
-      return (
-        <NativeSelect id={id} className='w-full' value={(value as string) ?? ''} onChange={(e) => onChange(e.target.value || null)}>
-          {!field.required && <NativeSelectOption value=''>—</NativeSelectOption>}
-          {field.options.map(([v, l]) => (
-            <NativeSelectOption key={v} value={v}>
-              {l}
-            </NativeSelectOption>
-          ))}
-        </NativeSelect>
-      );
-    case 'tri':
-      return (
-        <NativeSelect
-          id={id}
-          className='w-full'
-          value={value === true ? 'oui' : value === false ? 'non' : ''}
-          onChange={(e) => onChange(e.target.value === 'oui' ? true : e.target.value === 'non' ? false : null)}
-        >
-          <NativeSelectOption value=''>Non renseigné</NativeSelectOption>
-          <NativeSelectOption value='oui'>Oui</NativeSelectOption>
-          <NativeSelectOption value='non'>Non</NativeSelectOption>
-        </NativeSelect>
-      );
-    case 'bool':
-      return (
-        <div className='flex h-8 items-center'>
-          <Switch id={id} checked={Boolean(value)} onCheckedChange={(checked) => onChange(checked)} />
-        </div>
-      );
-    case 'int':
-    case 'num':
-      return (
-        <div className='relative'>
-          <Input
-            id={id}
-            inputMode={field.kind === 'int' ? 'numeric' : 'decimal'}
-            value={value === null || value === undefined ? '' : String(value)}
-            onChange={(e) => onChange(toNumber(e.target.value, field.kind === 'int'))}
-            className={cn(field.unit && 'pr-16', 'tabular-nums')}
-          />
-          {field.unit && (
-            <span className='text-muted-foreground pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-xs'>
-              {field.unit}
-            </span>
-          )}
-        </div>
-      );
-    case 'date':
-      return <Input id={id} type='date' value={(value as string) ?? ''} onChange={(e) => onChange(e.target.value || null)} />;
-    case 'list':
-      return (
-        <Input
-          id={id}
-          value={((value as string[]) ?? []).join(', ')}
-          placeholder='Séparés par des virgules'
-          onChange={(e) =>
-            onChange(
-              e.target.value
-                .split(',')
-                .map((s) => s.trim())
-                .filter(Boolean)
-            )
-          }
-        />
-      );
-    case 'textarea':
-      return <Textarea id={id} rows={4} value={(value as string) ?? ''} onChange={(e) => onChange(e.target.value || null)} />;
-    default:
-      return <Input id={id} value={(value as string) ?? ''} onChange={(e) => onChange(e.target.value || null)} />;
-  }
-}
-
-function Section({ id, title, children, aside }: { id?: string; title: string; children: React.ReactNode; aside?: React.ReactNode }) {
-  return (
-    <section id={id} className='bg-card min-w-0 scroll-mt-20 rounded-2xl border p-4 sm:p-5'>
-      <header className='mb-4 flex flex-wrap items-center justify-between gap-2'>
-        <h2 className='font-display text-[17px] font-semibold'>{title}</h2>
-        {aside}
-      </header>
-      {children}
-    </section>
-  );
-}
-
 export function BienForm({
   bienId,
   initial,
+  initialNa,
   initialPieces,
   initialVendeur,
   vendeurId,
@@ -144,6 +34,7 @@ export function BienForm({
 }: {
   bienId: string;
   initial: BienValues;
+  initialNa: string[];
   initialPieces: PieceInput[];
   initialVendeur: VendeurInput | null;
   vendeurId: string | null;
@@ -152,6 +43,8 @@ export function BienForm({
   const router = useRouter();
   const [bien, setBien] = useState<BienValues>(initial);
   const [pieces, setPieces] = useState<PieceInput[]>(initialPieces);
+  const [ficheNa, setFicheNa] = useState<string[]>(initialNa);
+  const [tente, setTente] = useState(false);
   const [vendeur, setVendeur] = useState<VendeurInput>(
     initialVendeur ?? { civilite: null, nom: '', prenom: null, email: null, portable: null, telephone_fixe: null }
   );
@@ -166,10 +59,6 @@ export function BienForm({
     setBien((b) => ({ ...b, [key]: value }));
     setDirty(true);
   };
-  const setPiece = (i: number, patch: Partial<PieceInput>) => {
-    setPieces((ps) => ps.map((p, j) => (j === i ? { ...p, ...patch } : p)));
-    setDirty(true);
-  };
   const setV = (key: keyof VendeurInput, value: string) => {
     setVendeur((v) => ({ ...v, [key]: key === 'nom' ? value : value || null }));
     setDirty(true);
@@ -177,14 +66,24 @@ export function BienForm({
 
   const prix = bien.prix_bien as number | null;
   const pct = (v: unknown) => (prix && typeof v === 'number' ? `soit ${fmt.format((v * 100) / prix)} %` : null);
-  const totalPieces = pieces.reduce((s, p) => s + (p.surface ?? 0), 0);
+  const manquants = champsManquants(bien, ficheNa, pieces);
+  const manquantsKeys = new Set(tente ? manquants.map((m) => m.key) : []);
+  const toggleNa = (key: string) => {
+    setFicheNa((na) => (na.includes(key) ? na.filter((k) => k !== key) : [...na, key]));
+    setDirty(true);
+  };
   const restants = points.filter((p) => !p.traite).length;
 
   const enregistrer = () => {
     setError(null);
+    setTente(true);
+    if (manquants.length > 0) {
+      setError('Complétez la fiche d’estimation avant d’enregistrer.');
+      return;
+    }
     startSave(async () => {
       const res = await mettreAJourBien(bienId, {
-        bien,
+        bien: { ...bien, fiche_na: ficheNa },
         pieces: pieces.filter((p) => p.nom.trim()),
         vendeur: vendeur.nom.trim() ? vendeur : null,
         vendeurId
@@ -212,93 +111,40 @@ export function BienForm({
   return (
     <div className='grid items-start gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]'>
       <div className='flex min-w-0 flex-col gap-5'>
-        {BIEN_GROUPS.map((group) => (
-          <Section key={group.id} id={group.id} title={group.title}>
-            <div className='grid grid-cols-2 gap-3 sm:grid-cols-4'>
-              {group.fields.map((field) => {
-                const hint =
-                  field.key === 'hono_vendeur' || field.key === 'hono_acquereur' ? pct(bien[field.key]) : null;
-                return (
-                  <div key={field.key} className={cn('min-w-0 space-y-1.5', (field.wide || field.kind === 'textarea') && 'col-span-2 sm:col-span-4')}>
-                    <Label htmlFor={`f-${field.key}`} className='text-muted-foreground text-xs'>
-                      {field.label}
-                    </Label>
-                    <FieldInput field={field} value={bien[field.key]} onChange={(v) => set(field.key, v)} />
-                    {hint && <p className='text-muted-foreground text-[11px] italic'>{hint}</p>}
-                  </div>
-                );
-              })}
-            </div>
-          </Section>
+        {BIEN_GROUPS.filter((g) => g.fiche).map((group) => (
+          <GroupFields
+            key={group.id}
+            group={group}
+            values={bien}
+            ficheNa={ficheNa}
+            manquants={manquantsKeys}
+            onChange={set}
+            onToggleNa={toggleNa}
+          />
         ))}
 
-        <Section
-          id='pieces'
-          title='Pièces'
-          aside={
-            <span className='text-muted-foreground text-xs tabular-nums'>
-              {pieces.length} pièces · {fmt.format(totalPieces)} m²
-            </span>
-          }
-        >
-          <div className='overflow-x-auto'>
-            <table className='w-full min-w-[440px] text-sm'>
-              <thead>
-                <tr className='text-muted-foreground text-left text-xs'>
-                  <th className='w-24 pb-2 font-medium'>Niveau</th>
-                  <th className='pb-2 font-medium'>Nom</th>
-                  <th className='w-28 pb-2 font-medium'>Surface (m²)</th>
-                  <th className='w-10 pb-2' />
-                </tr>
-              </thead>
-              <tbody>
-                {pieces.map((p, i) => (
-                  <tr key={i}>
-                    <td className='py-1 pr-2'>
-                      <Input aria-label={`Niveau, pièce ${i + 1}`} value={p.niveau ?? ''} onChange={(e) => setPiece(i, { niveau: e.target.value || null })} />
-                    </td>
-                    <td className='py-1 pr-2'>
-                      <Input aria-label={`Nom, pièce ${i + 1}`} value={p.nom} onChange={(e) => setPiece(i, { nom: e.target.value })} />
-                    </td>
-                    <td className='py-1 pr-2'>
-                      <Input
-                        aria-label={`Surface, pièce ${i + 1}`}
-                        inputMode='decimal'
-                        className='tabular-nums'
-                        value={p.surface ?? ''}
-                        onChange={(e) => setPiece(i, { surface: toNumber(e.target.value, false) })}
-                      />
-                    </td>
-                    <td className='py-1'>
-                      <Button
-                        variant='ghost'
-                        size='icon-sm'
-                        aria-label={`Supprimer la pièce ${i + 1}`}
-                        onClick={() => {
-                          setPieces((ps) => ps.filter((_, j) => j !== i));
-                          setDirty(true);
-                        }}
-                      >
-                        <Icons.trash />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <Button
-            variant='outline'
-            size='sm'
-            className='mt-3'
-            onClick={() => {
-              setPieces((ps) => [...ps, { nom: '', surface: null, niveau: null }]);
-              setDirty(true);
-            }}
-          >
-            <Icons.add /> Ajouter une pièce
-          </Button>
-        </Section>
+        <ReleveTable
+          pieces={pieces}
+          surfaceHabitable={(bien.surface as number | null) ?? null}
+          invalid={tente && manquantsKeys.has('pieces')}
+          onChange={(ps) => {
+            setPieces(ps);
+            setDirty(true);
+          }}
+        />
+
+        {BIEN_GROUPS.filter((g) => !g.fiche).map((group) => (
+          <GroupFields
+            key={group.id}
+            group={group}
+            values={bien}
+            ficheNa={ficheNa}
+            manquants={manquantsKeys}
+            onChange={set}
+            onToggleNa={toggleNa}
+            hints={{ hono_vendeur: pct(bien.hono_vendeur), hono_acquereur: pct(bien.hono_acquereur) }}
+          />
+        ))}
 
         <Section id='vendeur' title='Vendeur'>
           <div className='grid grid-cols-2 gap-3 sm:grid-cols-3'>
@@ -334,12 +180,13 @@ export function BienForm({
           <p className='text-muted-foreground text-xs' aria-live='polite'>
             {dirty ? 'Modifications non enregistrées' : 'Fiche à jour'}
           </p>
+          <ManquantsPanel manquants={manquants} />
           {error && (
             <p role='alert' className='text-crit text-sm'>
               {error}
             </p>
           )}
-          <Button onClick={enregistrer} disabled={saving || !dirty} className='h-10 w-full font-semibold'>
+          <Button onClick={enregistrer} disabled={saving || !dirty || (tente && manquants.length > 0)} className='h-10 w-full font-semibold'>
             {saving ? 'Enregistrement…' : 'Enregistrer la fiche'}
           </Button>
           <p className='text-muted-foreground text-xs'>Chaque enregistrement part dans la file de synchronisation Laforêt.</p>

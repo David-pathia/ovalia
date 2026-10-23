@@ -5,7 +5,7 @@ import { after } from 'next/server';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
-import { BienUpdateSchema, PieceInputSchema, VendeurInputSchema, type AVerifier } from './fields';
+import { BienUpdateSchema, PieceInputSchema, VendeurInputSchema, champsManquants, surfacePiece, type AVerifier } from './fields';
 import { estimerBien, recalculer, type EstimationDetails } from '@/lib/estimation/estimer';
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -35,6 +35,17 @@ export async function mettreAJourBien(bienId: string, input: unknown): Promise<A
     return { ok: false, error: `Valeur invalide${champ ? ` : ${champ}` : ''}.` };
   }
   const { bien, pieces, vendeur, vendeurId } = parsed.data;
+  const { fiche_na: ficheNa, ...valeurs } = bien;
+  const manquants = champsManquants(valeurs, ficheNa, pieces);
+  if (manquants.length > 0) {
+    return {
+      ok: false,
+      error: `Fiche d’estimation incomplète : ${manquants
+        .slice(0, 5)
+        .map((m) => m.label)
+        .join(', ')}${manquants.length > 5 ? ` et ${manquants.length - 5} autre(s)` : ''}.`
+    };
+  }
 
   const ville = typeof bien.ville === 'string' ? bien.ville.toUpperCase() : bien.ville;
   const { error } = await supabase
@@ -55,7 +66,7 @@ export async function mettreAJourBien(bienId: string, input: unknown): Promise<A
   if (pieces.length > 0) {
     const { error: insError } = await supabase
       .from('bien_pieces')
-      .insert(pieces.map((p, i) => ({ ...p, bien_id: bienId, ordre: i })));
+      .insert(pieces.map((p, i) => ({ ...p, surface: surfacePiece(p), bien_id: bienId, ordre: i })));
     if (insError) {
       console.error('bien_pieces.insert', insError);
       return { ok: false, error: 'Les pièces n’ont pas pu être enregistrées.' };

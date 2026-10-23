@@ -39,6 +39,12 @@ classif_projet `court_terme | moyen_terme | long_terme`. Champs Laforêt non mod
 - Pas d'inscription publique : les comptes sont créés depuis Supabase (Authentication → Invite user).
 - RLS sur toutes les tables : `owner_id = auth.uid()`.
 
+## Fiche d'estimation (obligatoire)
+- `src/features/biens/fields.ts` : groupes `fiche: true` = fiche d'estimation Laforêt (31 champs) + relevé des pièces
+  (longueur × largeur). `champsManquants()` bloque tout enregistrement (saisie rapide et fiche bien), côté client et serveur.
+- Un champ peut être déclaré « Inconnu / sans objet » (colonne `biens.fiche_na`), sauf la surface habitable.
+- La même liste de champs sert au formulaire, à la validation Zod et au brouillon renvoyé par l'IA.
+
 ## Conventions
 - Interface en français.
 - Icônes uniquement via `@/components/icons`.

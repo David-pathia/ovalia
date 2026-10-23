@@ -23,7 +23,7 @@ export default async function BienPage({ params }: Props) {
   const supabase = await createClient();
   const [{ data: bien }, { data: pieces }, { data: liens }, { data: analyses }, { data: estimations }] = await Promise.all([
     supabase.from('biens').select('*').eq('id', id).maybeSingle(),
-    supabase.from('bien_pieces').select('nom, surface, niveau').eq('bien_id', id).order('ordre'),
+    supabase.from('bien_pieces').select('nom, longueur, largeur, surface, niveau').eq('bien_id', id).order('ordre'),
     supabase
       .from('bien_contacts')
       .select('role, contacts(id, civilite, nom, prenom, email, portable, telephone_fixe)')
@@ -115,7 +115,13 @@ export default async function BienPage({ params }: Props) {
       <BienForm
         bienId={id}
         initial={initial}
-        initialPieces={(pieces ?? []).map((p) => ({ ...p, surface: p.surface === null ? null : Number(p.surface) })) as PieceInput[]}
+        initialNa={(bien.fiche_na as string[] | null) ?? []}
+        initialPieces={(pieces ?? []).map((p) => ({
+          ...p,
+          longueur: p.longueur === null ? null : Number(p.longueur),
+          largeur: p.largeur === null ? null : Number(p.largeur),
+          surface: p.surface === null ? null : Number(p.surface)
+        })) as PieceInput[]}
         initialVendeur={contact ? { civilite: contact.civilite, nom: contact.nom, prenom: contact.prenom, email: contact.email, portable: contact.portable, telephone_fixe: contact.telephone_fixe } : null}
         vendeurId={contact?.id ?? null}
         analyse={analyse}
