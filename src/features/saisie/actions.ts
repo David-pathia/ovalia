@@ -3,6 +3,8 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
+import { after } from 'next/server';
+import { estimerBien } from '@/lib/estimation/estimer';
 import { createClient } from '@/lib/supabase/server';
 import { ExtractionSchema, type Extraction } from './schema';
 import { SYSTEM_PROMPT } from './prompt';
@@ -196,6 +198,14 @@ export async function enregistrerBien(payload: Extraction, note: string): Promis
     modele: MODEL
   });
   if (analyseError) return rollback('bien_analyses.insert', analyseError);
+
+  // Estimation DVF en arrière-plan : la fiche l'affiche dès qu'elle est prête.
+  if (bien.ville || bien.code_postal) {
+    after(async () => {
+      const res = await estimerBien(supabase, bienId);
+      if (!res.ok) console.warn('estimation automatique', bienId, res.error);
+    });
+  }
 
   revalidatePath('/dashboard/biens');
   return { ok: true, bienId };

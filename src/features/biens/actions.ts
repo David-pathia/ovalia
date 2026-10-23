@@ -1,10 +1,12 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { after } from 'next/server';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { BienUpdateSchema, PieceInputSchema, VendeurInputSchema, type AVerifier } from './fields';
+import { estimerBien, recalculer, type EstimationDetails } from '@/lib/estimation/estimer';
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -86,8 +88,62 @@ export async function mettreAJourBien(bienId: string, input: unknown): Promise<A
     }
   }
 
+  // Première estimation automatique dès que la fiche contient de quoi localiser le bien.
+  if (bien.ville || bien.code_postal) {
+    const { count } = await supabase
+      .from('bien_analyses')
+      .select('id', { count: 'exact', head: true })
+      .eq('bien_id', bienId)
+      .not('valeur_probable', 'is', null);
+    if (!count) {
+      after(async () => {
+        const res = await estimerBien(supabase, bienId);
+        if (!res.ok) console.warn('estimation automatique', bienId, res.error);
+      });
+    }
+  }
+
   revalidatePath('/dashboard/biens');
   revalidatePath(`/dashboard/biens/${bienId}`);
+  return { ok: true };
+}
+
+export async function relancerEstimation(bienId: string): Promise<ActionResult> {
+  const { supabase, user } = await session();
+  if (!user) return { ok: false, error: 'Session expirée : reconnectez-vous.' };
+  const res = await estimerBien(supabase, bienId);
+  if (!res.ok) return res;
+  revalidatePath('/dashboard/biens');
+  revalidatePath(`/dashboard/biens/${bienId}`);
+  return { ok: true };
+}
+
+const AjustementsInput = z.array(
+  z.object({
+    libelle: z.string().trim().min(1),
+    pourcentage: z.number().min(-30).max(30),
+    justification: z.string()
+  })
+);
+
+export async function modifierAjustements(analyseId: string, input: unknown): Promise<ActionResult> {
+  const { supabase, user } = await session();
+  if (!user) return { ok: false, error: 'Session expirée : reconnectez-vous.' };
+  const parsed = AjustementsInput.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'Chaque ajustement doit avoir un libellé et un pourcentage entre -30 et +30.' };
+
+  const { data, error } = await supabase.from('bien_analyses').select('details, bien_id').eq('id', analyseId).single();
+  if (error || !data) return { ok: false, error: 'Estimation introuvable.' };
+  const details = recalculer(data.details as EstimationDetails, parsed.data);
+  const r = details.resultat;
+  const { error: upError } = await supabase
+    .from('bien_analyses')
+    .update({ details, valeur_basse: r.valeurBasse, valeur_probable: r.valeurProbable, valeur_haute: r.valeurHaute, prix_m2: r.prixM2 })
+    .eq('id', analyseId);
+  if (upError) return { ok: false, error: 'Les ajustements n’ont pas pu être enregistrés.' };
+
+  revalidatePath('/dashboard/biens');
+  revalidatePath(`/dashboard/biens/${data.bien_id}`);
   return { ok: true };
 }
 

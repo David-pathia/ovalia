@@ -20,6 +20,18 @@ Valeurs Laforêt : statut `estimation | avant_premiere | mandat_en_cours | sous_
 type_mandat `favoriz | simple` ; type `appartement | maison | immeuble | terrain | garage | local` ;
 classif_projet `court_terme | moyen_terme | long_terme`. Champs Laforêt non modélisés → `laforet_extra` (jsonb).
 
+## Estimation (src/lib/estimation)
+- `dvf.ts` (serveur) : Base Adresse Nationale → commune INSEE, communes à < 8 km (geo.api.gouv.fr),
+  ventes DVF géolocalisées (files.data.gouv.fr/geo-dvf, CSV par commune et par année, cache 1 semaine).
+  Seules les ventes d'un seul logement (+ dépendances) sont gardées.
+- `calcul.ts` (pur) : comparables par paliers (surface, pièces, terrain, rayon), indexation selon la tendance
+  du secteur, médiane et quartiles pondérés (récence × similarité × distance), fourchette ±12 % max,
+  ajustements qualitatifs (±30 % total), prix conseillé FAI avec 12,5 % d'honoraires (`TAUX_HONORAIRES`).
+- `estimer.ts` : orchestre et demande à Claude les ajustements chiffrés + argumentaire + stratégie ;
+  le prix ne vient jamais du modèle. Résultat dans `bien_analyses` (valeur_probable non nulle = estimation,
+  nulle = lecture de la saisie rapide). Lancée en arrière-plan (`after`) après saisie / 1re mise à jour.
+- Plus tard : API Laforêt (ventes du réseau) comme source de comparables prioritaire.
+
 ## Sécurité
 - `src/proxy.ts` → `src/lib/supabase/session.ts` : toute route hors `/connexion` et `/auth` exige une session.
   Sans variables Supabase, tout est fermé.

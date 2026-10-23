@@ -5,8 +5,12 @@ import { createClient } from '@/lib/supabase/server';
 import { STATUTS_BIEN, TYPES_BIEN, libelle } from '@/lib/biens/options';
 import { BIEN_FIELDS, type AVerifier, type BienValues, type PieceInput, type VendeurInput } from '@/features/biens/fields';
 import { BienForm, type Analyse } from '@/features/biens/components/bien-form';
+import { EstimationPanel, type EstimationView } from '@/features/biens/components/estimation-panel';
+import type { EstimationDetails } from '@/lib/estimation/estimer';
 
 export const metadata: Metadata = { title: 'Fiche bien' };
+// Le calcul de l'estimation (DVF + IA) peut prendre jusqu'à une minute.
+export const maxDuration = 120;
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -15,7 +19,7 @@ export default async function BienPage({ params }: Props) {
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
 
   const supabase = await createClient();
-  const [{ data: bien }, { data: pieces }, { data: liens }, { data: analyses }] = await Promise.all([
+  const [{ data: bien }, { data: pieces }, { data: liens }, { data: analyses }, { data: estimations }] = await Promise.all([
     supabase.from('biens').select('*').eq('id', id).maybeSingle(),
     supabase.from('bien_pieces').select('nom, surface, niveau').eq('bien_id', id).order('ordre'),
     supabase
@@ -28,6 +32,14 @@ export default async function BienPage({ params }: Props) {
       .from('bien_analyses')
       .select('id, synthese, points_forts, points_faibles, details')
       .eq('bien_id', id)
+      .is('valeur_probable', null)
+      .order('created_at', { ascending: false })
+      .limit(1),
+    supabase
+      .from('bien_analyses')
+      .select('id, created_at, synthese, details')
+      .eq('bien_id', id)
+      .not('valeur_probable', 'is', null)
       .order('created_at', { ascending: false })
       .limit(1)
   ]);
@@ -52,6 +64,19 @@ export default async function BienPage({ params }: Props) {
       }
     : null;
 
+  const e = estimations?.[0];
+  const estimation: EstimationView | null = e
+    ? { id: e.id, createdAt: e.created_at, argumentaire: e.synthese, details: e.details as EstimationDetails }
+    : null;
+  const disabledReason =
+    bien.type !== 'maison' && bien.type !== 'appartement'
+      ? 'L’estimation DVF couvre pour l’instant les maisons et les appartements.'
+      : !bien.surface
+        ? 'Renseignez la surface puis enregistrez la fiche.'
+        : !bien.ville && !bien.code_postal
+          ? 'Renseignez la ville ou le code postal puis enregistrez la fiche : l’estimation se lancera seule.'
+          : null;
+
   const titre = [
     libelle(TYPES_BIEN, bien.type),
     bien.pieces ? `${bien.pieces} pièces` : null,
@@ -74,6 +99,9 @@ export default async function BienPage({ params }: Props) {
           <span className='text-sauge'>{libelle(STATUTS_BIEN, bien.statut)}</span>
         </p>
       </header>
+      <div className='mb-5'>
+        <EstimationPanel key={estimation?.id ?? 'aucune'} bienId={id} estimation={estimation} disabledReason={disabledReason} />
+      </div>
       <BienForm
         bienId={id}
         initial={initial}

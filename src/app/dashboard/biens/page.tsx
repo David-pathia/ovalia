@@ -20,7 +20,12 @@ type Row = {
   annee_construction: number | null;
   prix_bien: number | null;
   created_at: string;
-  bien_analyses: { synthese: string | null; points_forts: string[]; details: { a_verifier?: { traite?: boolean }[] } }[];
+  bien_analyses: {
+    synthese: string | null;
+    points_forts: string[];
+    valeur_probable: number | null;
+    details: { a_verifier?: { traite?: boolean }[]; resultat?: { prixConseille: number } };
+  }[];
   bien_contacts: { role: string; contacts: { nom: string; prenom: string | null } | null }[];
 };
 
@@ -31,11 +36,10 @@ export default async function BiensPage() {
   const { data, error } = await supabase
     .from('biens')
     .select(
-      'id, type, statut, ville, code_postal, surface, surface_terrain, pieces, chambres, annee_construction, prix_bien, created_at, bien_analyses(synthese, points_forts, details), bien_contacts(role, contacts(nom, prenom))'
+      'id, type, statut, ville, code_postal, surface, surface_terrain, pieces, chambres, annee_construction, prix_bien, created_at, bien_analyses(synthese, points_forts, valeur_probable, details), bien_contacts(role, contacts(nom, prenom))'
     )
     .order('created_at', { ascending: false })
-    .order('created_at', { referencedTable: 'bien_analyses', ascending: false })
-    .limit(1, { referencedTable: 'bien_analyses' });
+    .order('created_at', { referencedTable: 'bien_analyses', ascending: false });
 
   const biens = (data ?? []) as unknown as Row[];
 
@@ -69,7 +73,8 @@ export default async function BiensPage() {
 
       <ul className='grid gap-4 lg:grid-cols-2'>
         {biens.map((b) => {
-          const analyse = b.bien_analyses[0];
+          const analyse = b.bien_analyses.find((a) => a.valeur_probable === null);
+          const estimation = b.bien_analyses.find((a) => a.valeur_probable !== null);
           const vendeur = b.bien_contacts.find((c) => c.role === 'vendeur')?.contacts;
           const aVerifier = analyse?.details?.a_verifier?.filter((q) => !q.traite).length ?? 0;
           return (
@@ -103,9 +108,16 @@ export default async function BiensPage() {
                   )}
                 </div>
               </div>
-              {b.prix_bien && (
+              {estimation?.details.resultat ? (
+                <p className='mt-2'>
+                  <span className='font-display text-cuivre text-xl font-extrabold tabular-nums'>
+                    {fmt.format(estimation.details.resultat.prixConseille)} €
+                  </span>
+                  <span className='text-muted-foreground ml-2 text-xs'>prix conseillé (estimation DVF)</span>
+                </p>
+              ) : b.prix_bien ? (
                 <p className='font-display mt-2 text-xl font-extrabold tabular-nums'>{fmt.format(b.prix_bien)} €</p>
-              )}
+              ) : null}
               {analyse?.synthese && <p className='mt-3 line-clamp-3 text-sm'>{analyse.synthese}</p>}
               {analyse?.points_forts?.length ? (
                 <div className='mt-3 flex flex-wrap gap-1.5'>
