@@ -40,6 +40,7 @@ export const navGroups: NavGroup[] = [
   {
     label: 'Réglages',
     items: [
+      { title: 'Taux de crédit', url: '/dashboard/taux', icon: 'creditCard', items: [] },
       { title: 'Synchronisation Laforêt', url: '/dashboard/laforet', icon: 'sync', label: 'Bientôt', items: [] }
     ]
   }

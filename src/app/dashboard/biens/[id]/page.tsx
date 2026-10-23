@@ -7,6 +7,8 @@ import { BIEN_FIELDS, type AVerifier, type BienValues, type PieceInput, type Ven
 import { BienForm, type Analyse } from '@/features/biens/components/bien-form';
 import { EstimationPanel, type EstimationView } from '@/features/biens/components/estimation-panel';
 import type { EstimationDetails } from '@/lib/estimation/estimer';
+import { FinancementPanel } from '@/features/credit/components/financement-panel';
+import { lireParametresCredit } from '@/features/credit/data';
 
 export const metadata: Metadata = { title: 'Fiche bien' };
 // Le calcul de l'estimation (DVF + IA) peut prendre jusqu'à une minute.
@@ -64,6 +66,7 @@ export default async function BienPage({ params }: Props) {
       }
     : null;
 
+  const parametresCredit = await lireParametresCredit();
   const e = estimations?.[0];
   const estimation: EstimationView | null = e
     ? { id: e.id, createdAt: e.created_at, argumentaire: e.synthese, details: e.details as EstimationDetails }
@@ -99,8 +102,15 @@ export default async function BienPage({ params }: Props) {
           <span className='text-sauge'>{libelle(STATUTS_BIEN, bien.statut)}</span>
         </p>
       </header>
-      <div className='mb-5'>
+      <div className='mb-5 flex flex-col gap-5'>
         <EstimationPanel key={estimation?.id ?? 'aucune'} bienId={id} estimation={estimation} disabledReason={disabledReason} />
+        <FinancementPanel
+          key={`fin-${estimation?.id ?? 'aucune'}`}
+          parametres={parametresCredit}
+          prixInitial={estimation?.details.resultat.prixConseille ?? (bien.prix_affiche ?? bien.prix_bien ?? null)}
+          prixSource={estimation ? 'prix conseillé de l’estimation' : bien.prix_affiche || bien.prix_bien ? 'prix de la fiche' : 'à saisir'}
+          anneeConstruction={bien.annee_construction}
+        />
       </div>
       <BienForm
         bienId={id}
