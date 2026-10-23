@@ -10,8 +10,15 @@ Estimations (DVF) et pré-saisie Laforêt Business · Avis de valeur détaillé 
 Boîte mail · LinkedIn · Mini-site Julien Ossedat (retours de visite, avis clients, documents).
 
 ## Laforêt
-Pas encore d'API. Toute création / modification de bien ou client part dans la table `laforet_sync`
+Pas encore d'API. Toute création / modification de bien, contact ou projet part dans la table `laforet_sync`
 (trigger SQL). Le futur connecteur ne fera que vider cette file.
+
+Schéma calqué sur les fiches Laforêt (`supabase/migrations/20261023100000_schema_laforet.sql`) :
+`biens` (+ `bien_pieces`, `bien_images`, `bien_analyses`), `contacts`, `bien_contacts` (rôle vendeur…),
+`projets` (projet de recherche = critères de rapprochement), `rapprochements` (projet ↔ bien), `taches`.
+Valeurs Laforêt : statut `estimation | avant_premiere | mandat_en_cours | sous_offre | suspendu` ;
+type_mandat `favoriz | simple` ; type `appartement | maison | immeuble | terrain | garage | local` ;
+classif_projet `court_terme | moyen_terme | long_terme`. Champs Laforêt non modélisés → `laforet_extra` (jsonb).
 
 ## Sécurité
 - `src/proxy.ts` → `src/lib/supabase/session.ts` : toute route hors `/connexion` et `/auth` exige une session.

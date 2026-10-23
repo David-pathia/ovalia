@@ -15,7 +15,7 @@ export const navGroups: NavGroup[] = [
     label: 'Portefeuille',
     items: [
       { title: 'Biens', url: '/dashboard/biens', icon: 'bien', shortcut: ['b', 'b'], label: 'Bientôt', items: [] },
-      { title: 'Clients', url: '/dashboard/clients', icon: 'teams', shortcut: ['c', 'c'], label: 'Bientôt', items: [] },
+      { title: 'Contacts', url: '/dashboard/contacts', icon: 'teams', shortcut: ['c', 'c'], label: 'Bientôt', items: [] },
       { title: 'Rapprochements', url: '/dashboard/rapprochements', icon: 'rapprochement', shortcut: ['r', 'r'], label: 'Bientôt', items: [] }
     ]
   },
@@ -46,10 +46,11 @@ export const navGroups: NavGroup[] = [
 
 /** Descriptions affichées sur les pages des modules à venir. */
 export const moduleDescriptions: Record<string, string> = {
-  biens: 'Liste et fiches des biens, saisie rapide, photos et statut de synchronisation avec Laforêt.',
-  clients: 'Fiches clients et critères de recherche (budget, secteur, surface, pièces, extérieur).',
+  biens: 'Fiches biens au format Laforêt : prix et honoraires, mandat, pièces, photos, diffusion et synchronisation.',
+  contacts:
+    'Fiches contacts (vendeurs, demandeurs) et projets de recherche : budget, communes, surface, pièces.',
   rapprochements:
-    'Croisement automatique biens ↔ clients avec un score de correspondance et un mail prêt à envoyer.',
+    'Croisement automatique biens ↔ projets de recherche, avec un score et un mail prêt à envoyer.',
   estimations:
     'Aide à l’estimation à partir des ventes DVF du secteur, et pré-remplissage de Laforêt Business.',
   'avis-de-valeur': 'Avis de valeur détaillé, chiffres et comparables à l’appui, exporté en PDF.',
@@ -59,5 +60,5 @@ export const moduleDescriptions: Record<string, string> = {
   linkedin: 'Idées de posts, rédaction et planning de publication.',
   'mini-site': 'Mini-site de Julien Ossedat : retours de visite, avis clients et documents utiles.',
   laforet:
-    'File des biens et clients à envoyer vers Laforêt. La connexion sera branchée dès réception de l’API.'
+    'File des biens, contacts et projets à envoyer vers Laforêt. La connexion sera branchée dès réception de l’API.'
 };
