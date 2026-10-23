@@ -47,7 +47,11 @@ export async function analyserNote(note: string): Promise<AnalyseResult> {
     return { ok: false, error: 'La clé ANTHROPIC_API_KEY n’est pas configurée sur le serveur.' };
   }
 
-  const client = new Anthropic();
+  // Une clé non rattachée à un espace de travail (sk-ant-usr-…) exige l'en-tête anthropic-workspace-id.
+  const workspaceId = process.env.ANTHROPIC_WORKSPACE_ID;
+  const client = new Anthropic(
+    workspaceId ? { defaultHeaders: { 'anthropic-workspace-id': workspaceId } } : {}
+  );
   try {
     const response = await client.beta.messages.create({
       model: MODEL,
