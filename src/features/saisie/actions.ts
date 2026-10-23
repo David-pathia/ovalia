@@ -1,13 +1,29 @@
 'use server';
 
 import Anthropic from '@anthropic-ai/sdk';
-import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
+import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { ExtractionSchema, type Extraction } from './schema';
 import { SYSTEM_PROMPT } from './prompt';
 
 const MODEL = 'claude-opus-5-5';
+
+// Le schéma est donné dans la consigne et la réponse validée ici avec Zod :
+// le format imposé par l'API refusait ce schéma (trop de champs « valeur ou vide »).
+const FORMAT_REPONSE = `Réponds uniquement avec un objet JSON valide, sans texte autour ni bloc de code, conforme à ce schéma JSON :
+${JSON.stringify(z.toJSONSchema(ExtractionSchema))}`;
+
+function extraireJson(texte: string): unknown {
+  const debut = texte.indexOf('{');
+  const fin = texte.lastIndexOf('}');
+  if (debut === -1 || fin <= debut) return null;
+  try {
+    return JSON.parse(texte.slice(debut, fin + 1));
+  } catch {
+    return null;
+  }
+}
 
 export type AnalyseResult = { ok: true; data: Extraction } | { ok: false; error: string };
 export type SaveResult = { ok: true; bienId: string } | { ok: false; error: string };
@@ -33,23 +49,31 @@ export async function analyserNote(note: string): Promise<AnalyseResult> {
 
   const client = new Anthropic();
   try {
-    const response = await client.beta.messages.parse({
+    const response = await client.beta.messages.create({
       model: MODEL,
       max_tokens: 16000,
       betas: ['server-side-fallback-2026-07-01'],
       fallbacks: 'default',
-      output_config: { effort: 'medium', format: betaZodOutputFormat(ExtractionSchema) },
-      system: SYSTEM_PROMPT,
+      output_config: { effort: 'medium' },
+      system: `${SYSTEM_PROMPT}\n\n${FORMAT_REPONSE}`,
       messages: [{ role: 'user', content: `Note du conseiller :\n\n${texte}` }]
     });
 
     if (response.stop_reason === 'refusal') {
       return { ok: false, error: 'L’IA a refusé d’analyser cette note. Reformulez-la puis réessayez.' };
     }
-    if (response.stop_reason === 'max_tokens' || !response.parsed_output) {
+    if (response.stop_reason === 'max_tokens') {
       return { ok: false, error: 'La réponse de l’IA est incomplète. Réessayez.' };
     }
-    return { ok: true, data: response.parsed_output };
+    const texteReponse = response.content
+      .map((block) => (block.type === 'text' ? block.text : ''))
+      .join('');
+    const parsed = ExtractionSchema.safeParse(extraireJson(texteReponse));
+    if (!parsed.success) {
+      console.error('Réponse IA non conforme', parsed.error.issues.slice(0, 5), texteReponse.slice(0, 500));
+      return { ok: false, error: 'La réponse de l’IA n’a pas le bon format. Réessayez.' };
+    }
+    return { ok: true, data: parsed.data };
   } catch (error) {
     if (error instanceof Anthropic.AuthenticationError) {
       return { ok: false, error: 'La clé Anthropic est invalide.' };
@@ -59,7 +83,7 @@ export async function analyserNote(note: string): Promise<AnalyseResult> {
     }
     if (error instanceof Anthropic.APIError) {
       console.error('Anthropic', error.status, error.message);
-      return { ok: false, error: `Le service IA a répondu une erreur (${error.status}). Réessayez.` };
+      return { ok: false, error: `Le service IA a répondu une erreur (${error.status}) : ${error.message}` };
     }
     throw error;
   }
