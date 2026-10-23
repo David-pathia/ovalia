@@ -1,0 +1,303 @@
+<title>Ovalia Forest Mind</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout : poste de pilotage — rail latéral sobre, en-tête “carnet de route”, grille de cartes vert nature sur fond vert forêt, cuivre réservé aux actions */
+:root{
+  --foret:#0F2D23; --foret-2:#13382c; --nature:#2F5D50; --nature-2:#26503f;
+  --sauge:#A7B59F; --ivoire:#E8DCC5; --cuivre:#C77F52; --cuivre-2:#d8946a; --charbon:#1B1B1B;
+  --ligne:rgba(232,220,197,.12); --ligne-2:rgba(232,220,197,.22);
+  --ok:#8fc29a; --warn:#e2b867; --crit:#e07a64;
+  --f-display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --f-body:"Inter",ui-sans-serif,system-ui,-apple-system,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--foret);color:var(--ivoire);font-family:var(--f-body);font-size:14px;line-height:1.5}
+.app{display:grid;grid-template-columns:248px minmax(0,1fr);min-height:100%}
+/* ---------- Rail ---------- */
+.rail{background:var(--charbon);border-right:1px solid var(--ligne);padding:20px 14px;display:flex;flex-direction:column;gap:22px;position:sticky;top:0;height:100vh;overflow:auto}
+.brand{display:flex;align-items:center;gap:10px;padding:2px 8px}
+.brand b{font-family:var(--f-display);font-weight:800;font-size:19px;letter-spacing:.01em}
+.brand small{display:block;font-size:10.5px;color:var(--sauge);letter-spacing:.14em;text-transform:uppercase;margin-top:-2px}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav h6{margin:14px 10px 6px;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--sauge);font-weight:600;opacity:.8}
+.nav a{display:flex;align-items:center;gap:11px;padding:8px 10px;border-radius:8px;color:var(--ivoire);text-decoration:none;opacity:.78;font-weight:500}
+.nav a svg{width:17px;height:17px;flex:none;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.nav a:hover{opacity:1;background:rgba(232,220,197,.06)}
+.nav a.on{opacity:1;background:var(--nature);box-shadow:inset 3px 0 0 var(--cuivre)}
+.nav a .n{margin-left:auto;font-family:var(--f-mono);font-size:11px;background:rgba(199,127,82,.18);color:var(--cuivre-2);padding:1px 7px;border-radius:99px}
+.nav a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--cuivre);outline-offset:2px}
+.me{margin-top:auto;display:flex;align-items:center;gap:10px;padding:10px;border-top:1px solid var(--ligne)}
+.avatar{width:34px;height:34px;border-radius:50%;background:var(--nature);display:grid;place-items:center;font-weight:600;font-size:13px;border:1px solid var(--sauge)}
+.me div{font-size:13px;line-height:1.3}.me span{color:var(--sauge);font-size:11.5px}
+/* ---------- Main ---------- */
+main{position:relative;padding-block:26px 48px;padding-left:max(28px,env(safe-area-inset-left,0px));padding-right:max(28px,env(safe-area-inset-right,0px));overflow:hidden;min-width:0}
+.topo{position:absolute;inset:0 0 auto 0;height:320px;pointer-events:none;opacity:.5}
+.top{position:relative;display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px 24px;margin-bottom:26px}
+.eyebrow{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--sauge);font-weight:600}
+h1{font-family:var(--f-display);font-weight:800;font-size:clamp(28px,4vw,40px);line-height:1.05;margin:6px 0 6px;text-wrap:balance}
+.motto{color:var(--sauge);font-size:13.5px}
+.motto i{font-style:normal;color:var(--cuivre-2)}
+.actions{display:flex;gap:10px;flex-wrap:wrap}
+.search{display:flex;align-items:center;gap:8px;background:rgba(27,27,27,.55);border:1px solid var(--ligne-2);border-radius:10px;padding:8px 12px;min-width:0;width:min(320px,100%)}
+.search input{all:unset;flex:1;min-width:0;color:var(--ivoire);font-size:13.5px}
+.search input::placeholder{color:var(--sauge);opacity:.8}
+.kbd{font-family:var(--f-mono);font-size:11px;border:1px solid var(--ligne-2);border-radius:5px;padding:0 5px;color:var(--sauge)}
+.btn{font:inherit;font-weight:600;font-size:13.5px;border-radius:10px;padding:9px 14px;cursor:pointer;border:1px solid var(--ligne-2);background:transparent;color:var(--ivoire);display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.btn:hover{background:rgba(232,220,197,.07)}
+.btn.cu{background:var(--cuivre);border-color:var(--cuivre);color:var(--charbon)}
+.btn.cu:hover{background:var(--cuivre-2)}
+.btn.sm{padding:6px 10px;font-size:12.5px;border-radius:8px}
+/* KPI */
+.kpis{position:relative;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:18px}
+.kpi{background:rgba(47,93,80,.55);border:1px solid var(--ligne);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:4px}
+.kpi .l{font-size:12px;color:var(--sauge)}
+.kpi .v{font-family:var(--f-display);font-weight:800;font-size:30px;line-height:1.1;font-variant-numeric:tabular-nums}
+.kpi .d{font-size:12px;color:var(--sauge)}.kpi .d b{color:var(--ok);font-weight:600}
+.kpi svg{height:26px;width:100%;margin-top:2px}
+/* Grid */
+.grid{position:relative;display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:18px;align-items:start}
+.col{display:flex;flex-direction:column;gap:18px;min-width:0}
+.card{background:var(--nature);border:1px solid var(--ligne);border-radius:16px;padding:18px 18px 16px;min-width:0}
+.card-h{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.card-h h2{font-family:var(--f-display);font-weight:600;font-size:17px;margin:0;display:flex;align-items:center;gap:9px}
+.card-h h2 svg{width:18px;height:18px;stroke:var(--sauge);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.card-h .meta{font-size:12px;color:var(--sauge)}
+.ia{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.06em;color:var(--charbon);background:var(--sauge);padding:1px 6px;border-radius:5px;font-weight:500}
+/* Tasks */
+.tasks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.task{display:grid;grid-template-columns:auto 52px minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 2px;border-top:1px solid var(--ligne)}
+.task:first-child{border-top:0}
+.task input{appearance:none;width:18px;height:18px;border-radius:5px;border:1.5px solid var(--sauge);margin:0;cursor:pointer;display:grid;place-items:center}
+.task input:checked{background:var(--sauge);border-color:var(--sauge)}
+.task input:checked::after{content:"";width:9px;height:5px;border:2px solid var(--charbon);border-top:0;border-right:0;transform:rotate(-45deg) translate(1px,-1px)}
+.task .h{font-family:var(--f-mono);font-size:12px;color:var(--sauge)}
+.task .t{min-width:0}
+.task .t b{font-weight:500;display:block}
+.task .t span{font-size:12.5px;color:var(--sauge)}
+.task.done .t b{text-decoration:line-through;opacity:.55}
+.chip{font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;white-space:nowrap;border:1px solid transparent}
+.c-visite{background:rgba(167,181,159,.16);color:var(--sauge);border-color:rgba(167,181,159,.3)}
+.c-estim{background:rgba(199,127,82,.16);color:var(--cuivre-2);border-color:rgba(199,127,82,.35)}
+.c-mandat{background:rgba(232,220,197,.1);color:var(--ivoire);border-color:var(--ligne-2)}
+.c-appel{background:rgba(143,194,154,.13);color:var(--ok);border-color:rgba(143,194,154,.3)}
+/* Matches */
+.match{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px 14px;padding:14px;border-radius:12px;background:var(--nature-2);border:1px solid var(--ligne)}
+.match + .match{margin-top:10px}
+.match .bien b{font-weight:600}
+.match .bien span{display:block;font-size:12.5px;color:var(--sauge)}
+.score{display:flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:13px}
+.ring{--p:80;width:38px;height:38px;border-radius:50%;background:conic-gradient(var(--cuivre) calc(var(--p)*1%),rgba(232,220,197,.12) 0);display:grid;place-items:center}
+.ring::before{content:"";width:28px;height:28px;border-radius:50%;background:var(--nature-2);grid-area:1/1}
+.ring em{grid-area:1/1;font-style:normal;font-size:11px;z-index:1}
+.clients{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.cl{font-size:12px;padding:3px 9px;border-radius:99px;background:rgba(15,45,35,.6);border:1px solid var(--ligne)}
+.cl i{font-style:normal;color:var(--cuivre-2);font-family:var(--f-mono);font-size:11px;margin-left:4px}
+.match .why{grid-column:1/-1;font-size:12.5px;color:var(--sauge);margin:0}
+.match .go{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}
+/* Mail */
+.mail{display:grid;grid-template-columns:8px minmax(0,1fr) auto;gap:10px;padding:10px 0;border-top:1px solid var(--ligne);align-items:start}
+.mail:first-of-type{border-top:0}
+.dot{width:8px;height:8px;border-radius:50%;margin-top:6px}
+.mail b{font-weight:600}.mail p{margin:2px 0 0;font-size:12.5px;color:var(--sauge)}
+.mail .h{font-family:var(--f-mono);font-size:11.5px;color:var(--sauge)}
+/* Estimation */
+.estim-h{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline}
+.estim-h b{font-weight:600}
+.price{font-family:var(--f-display);font-weight:800;font-size:26px;font-variant-numeric:tabular-nums}
+.price small{font-family:var(--f-body);font-weight:500;font-size:12px;color:var(--sauge);margin-left:6px}
+.range{position:relative;height:8px;border-radius:99px;background:rgba(15,45,35,.7);margin:16px 0 6px}
+.range .band{position:absolute;left:28%;right:30%;top:0;bottom:0;border-radius:99px;background:linear-gradient(90deg,var(--sauge),var(--cuivre))}
+.range .pin{position:absolute;left:52%;top:-5px;width:3px;height:18px;border-radius:2px;background:var(--ivoire)}
+.scale{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:11px;color:var(--sauge)}
+.dvf{margin-top:12px;font-size:12.5px;color:var(--sauge);display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.dvf div{background:rgba(15,45,35,.5);border-radius:10px;padding:8px 10px}
+.dvf b{display:block;color:var(--ivoire);font-family:var(--f-mono);font-weight:500;font-size:13px}
+/* Sync */
+.sync{display:flex;flex-direction:column;gap:8px}
+.srow{display:flex;align-items:center;gap:10px;font-size:13px}
+.srow span:nth-child(2){flex:1;min-width:0}
+.st{font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px}
+.st.wait{background:rgba(226,184,103,.15);color:var(--warn)}
+.st.ok{background:rgba(143,194,154,.15);color:var(--ok)}
+.st.err{background:rgba(224,122,100,.15);color:var(--crit)}
+.note{font-size:12px;color:var(--sauge);margin:12px 0 0;padding-top:10px;border-top:1px dashed var(--ligne-2)}
+/* LinkedIn */
+.post{background:rgba(15,45,35,.55);border-radius:12px;padding:12px 14px;font-size:13px;border:1px solid var(--ligne)}
+.post p{margin:0 0 8px}
+.sample{display:inline-block;margin-left:8px;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--cuivre-2);border:1px solid rgba(199,127,82,.4);border-radius:5px;padding:1px 6px;vertical-align:middle}
+.burger{display:none}
+/* Responsive */
+@media (max-width:1100px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.grid{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:820px){
+  .app{grid-template-columns:minmax(0,1fr)}
+  .rail{position:fixed;inset:0 auto 0 0;width:260px;z-index:20;transform:translateX(-100%);transition:transform .25s;padding-top:calc(20px + env(safe-area-inset-top,0px));padding-left:max(14px,env(safe-area-inset-left,0px))}
+  .rail.open{transform:none;box-shadow:20px 0 60px rgba(0,0,0,.5)}
+  .burger{display:inline-flex}
+  main{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+}
+@media (max-width:520px){
+  .kpis{gap:10px}.kpi .v{font-size:24px}
+  .task{grid-template-columns:auto minmax(0,1fr) auto}.task .h{display:none}
+  .dvf{grid-template-columns:minmax(0,1fr)}
+  .search{width:100%}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="app">
+  <aside class="rail" id="rail" aria-label="Navigation">
+    <div class="brand">
+      <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true">
+        <circle cx="17" cy="17" r="16" fill="#2F5D50" stroke="#A7B59F" stroke-width="1"/>
+        <path d="M5 25 L13 13 L17 18 L21 11 L29 25 Z" fill="#0F2D23"/>
+        <path d="M21 11 L18 16 L24 16 Z M21 14 L17 20 L25 20 Z" fill="#A7B59F"/>
+        <path d="M9 27 C13 24 15 26 18 22 S23 19 25 15" fill="none" stroke="#C77F52" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="2 2.4"/>
+      </svg>
+      <div><b>Ovalia</b><small>Forest Mind</small></div>
+    </div>
+    <nav class="nav">
+      <a class="on" href="#"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Aujourd'hui</a>
+      <h6>Portefeuille</h6>
+      <a href="#"><svg viewBox="0 0 24 24"><path d="M4 21V9l8-5 8 5v12M9 21v-6h6v6"/></svg>Biens<span class="n">42</span></a>
+      <a href="#"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5M16 4.8a3.5 3.5 0 0 1 0 6.4M18 14.8c1.8.7 3 2.5 3.5 5.2"/></svg>Clients<span class="n">128</span></a>
+      <a href="#"><svg viewBox="0 0 24 24"><circle cx="7" cy="12" r="4"/><circle cx="17" cy="12" r="4"/></svg>Rapprochements<span class="n">7</span></a>
+      <h6>Expertise</h6>
+      <a href="#"><svg viewBox="0 0 24 24"><path d="M4 20h16M6 16l4-5 3 3 5-7"/></svg>Estimations</a>
+      <a href="#"><svg viewBox="0 0 24 24"><path d="M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6"/></svg>Avis de valeur</a>
+      <a href="#"><svg viewBox="0 0 24 24"><path d="M14 6l4 4M4 20l3.5-1L19 7.5 16.5 5 5 16.5z"/></svg>Mandats</a>
+      <a href="#"><svg viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18v3h3l6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/></svg>Travaux</a>
+      <h6>Communication</h6>
+      <a href="#"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>Boîte mail<span class="n">5</span></a>
+      <a href="#"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 10v7M8 7v.01M12 17v-4a2 2 0 0 1 4 0v4M12 10v7"/></svg>LinkedIn</a>
+      <a href="#"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/></svg>Mini-site</a>
+    </nav>
+    <div class="me"><div class="avatar">JO</div><div>Julien Ossedat<br><span>Laforêt Immobilier</span></div></div>
+  </aside>
+
+  <main>
+    <svg class="topo" viewBox="0 0 1200 320" preserveAspectRatio="none" aria-hidden="true">
+      <g fill="none" stroke="#A7B59F" stroke-width="1" opacity=".22">
+        <path d="M0 60 C200 20 340 110 520 70 S860 10 1200 60"/>
+        <path d="M0 95 C210 55 330 150 540 105 S870 45 1200 98"/>
+        <path d="M0 130 C220 92 320 185 560 140 S880 82 1200 136"/>
+        <path d="M0 168 C230 130 330 220 580 176 S890 120 1200 174"/>
+        <path d="M0 206 C240 170 340 255 600 212 S900 160 1200 212"/>
+        <path d="M720 40 C780 20 860 30 880 60 S820 100 760 85 S690 55 720 40Z"/>
+        <path d="M745 50 C790 38 840 45 850 62 S815 82 775 75 S725 58 745 50Z"/>
+      </g>
+    </svg>
+
+    <header class="top">
+      <div>
+        <button class="btn sm burger" id="burger" aria-controls="rail" aria-expanded="false">☰ Menu</button>
+        <div class="eyebrow">Vendredi 23 octobre</div>
+        <h1>Bonjour Julien, 6 étapes au programme</h1>
+        <div class="motto">Explorer <i>•</i> Apprendre <i>•</i> Agir <span class="sample">Données d'exemple</span></div>
+      </div>
+      <div class="actions">
+        <label class="search"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="q" placeholder="Bien, client, adresse…" aria-label="Rechercher"><span class="kbd">⌘K</span></label>
+        <button class="btn">+ Client</button>
+        <button class="btn cu">+ Nouveau bien</button>
+      </div>
+    </header>
+
+    <section class="kpis" aria-label="Indicateurs">
+      <div class="kpi"><span class="l">Mandats actifs</span><span class="v">42</span><span class="d"><b>+3</b> ce mois</span>
+        <svg viewBox="0 0 100 26" preserveAspectRatio="none"><path d="M0 20 L14 18 L28 19 L42 14 L56 15 L70 10 L84 11 L100 6 L100 26 L0 26Z" fill="rgba(167,181,159,.18)"/><path d="M0 20 L14 18 L28 19 L42 14 L56 15 L70 10 L84 11 L100 6" fill="none" stroke="#A7B59F" stroke-width="1.5"/><circle cx="99" cy="6" r="2.2" fill="#C77F52"/></svg></div>
+      <div class="kpi"><span class="l">Rapprochements nouveaux</span><span class="v">7</span><span class="d">dont 3 au-dessus de 85 %</span>
+        <svg viewBox="0 0 100 26" preserveAspectRatio="none"><path d="M0 22 L14 20 L28 21 L42 16 L56 18 L70 12 L84 14 L100 8 L100 26 L0 26Z" fill="rgba(167,181,159,.18)"/><path d="M0 22 L14 20 L28 21 L42 16 L56 18 L70 12 L84 14 L100 8" fill="none" stroke="#A7B59F" stroke-width="1.5"/><circle cx="99" cy="8" r="2.2" fill="#C77F52"/></svg></div>
+      <div class="kpi"><span class="l">Estimations en cours</span><span class="v">4</span><span class="d">2 avis de valeur à finaliser</span>
+        <svg viewBox="0 0 100 26" preserveAspectRatio="none"><path d="M0 14 L14 16 L28 12 L42 15 L56 11 L70 13 L84 9 L100 12 L100 26 L0 26Z" fill="rgba(167,181,159,.18)"/><path d="M0 14 L14 16 L28 12 L42 15 L56 11 L70 13 L84 9 L100 12" fill="none" stroke="#A7B59F" stroke-width="1.5"/><circle cx="99" cy="12" r="2.2" fill="#C77F52"/></svg></div>
+      <div class="kpi"><span class="l">Mails à traiter</span><span class="v">5</span><span class="d">brouillons IA prêts : 3</span>
+        <svg viewBox="0 0 100 26" preserveAspectRatio="none"><path d="M0 8 L14 12 L28 10 L42 14 L56 12 L70 16 L84 15 L100 18 L100 26 L0 26Z" fill="rgba(167,181,159,.18)"/><path d="M0 8 L14 12 L28 10 L42 14 L56 12 L70 16 L84 15 L100 18" fill="none" stroke="#A7B59F" stroke-width="1.5"/><circle cx="99" cy="18" r="2.2" fill="#C77F52"/></svg></div>
+    </section>
+
+    <div class="grid">
+      <div class="col">
+        <section class="card">
+          <div class="card-h"><h2><svg viewBox="0 0 24 24"><path d="M9 11l3 3 8-8M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg>Feuille de route du jour</h2><span class="meta" id="progress">0 / 6 faites</span></div>
+          <ul class="tasks" id="tasks">
+            <li class="task"><input type="checkbox" id="t1" aria-label="Fait"><span class="h">09:00</span><label class="t" for="t1"><b>Rappeler M. et Mme Bertin</b><span>Retour sur l'offre, T4 rue des Tilleuls</span></label><span class="chip c-appel">Appel</span></li>
+            <li class="task"><input type="checkbox" id="t2" aria-label="Fait"><span class="h">10:30</span><label class="t" for="t2"><b>Visite maison 5 pièces, Caluire</b><span>Famille Moreau · checklist retour visite prête</span></label><span class="chip c-visite">Visite</span></li>
+            <li class="task"><input type="checkbox" id="t3" aria-label="Fait"><span class="h">12:00</span><label class="t" for="t3"><b>Finaliser l'avis de valeur, chemin des Vignes</b><span>12 ventes DVF comparables déjà jointes</span></label><span class="chip c-estim">Estimation</span></li>
+            <li class="task"><input type="checkbox" id="t4" aria-label="Fait"><span class="h">14:00</span><label class="t" for="t4"><b>Signature mandat exclusif, appartement T3</b><span>Projet de mandat rédigé, à relire</span></label><span class="chip c-mandat">Mandat</span></li>
+            <li class="task"><input type="checkbox" id="t5" aria-label="Fait"><span class="h">16:30</span><label class="t" for="t5"><b>Saisir 2 estimations dans Laforêt Business</b><span>Champs pré-remplis, à vérifier puis valider</span></label><span class="chip c-estim">Estimation</span></li>
+            <li class="task"><input type="checkbox" id="t6" aria-label="Fait"><span class="h">18:00</span><label class="t" for="t6"><b>Publier le post LinkedIn de la semaine</b><span>Brouillon proposé ci-contre</span></label><span class="chip c-visite">Comm.</span></li>
+          </ul>
+        </section>
+
+        <section class="card">
+          <div class="card-h"><h2><svg viewBox="0 0 24 24"><circle cx="7" cy="12" r="4"/><circle cx="17" cy="12" r="4"/></svg>Nouveaux rapprochements <span class="ia">IA</span></h2><a class="meta" href="#" style="color:var(--sauge)">Tout voir →</a></div>
+          <div class="match">
+            <div class="bien"><b>Maison 5 p. · 128 m² · jardin 600 m²</b><span>Caluire-et-Cuire · 545 000 € · rentrée hier</span></div>
+            <div class="score"><div class="ring" style="--p:92"><em>92</em></div></div>
+            <div class="clients"><span class="cl">Famille Moreau<i>92 %</i></span><span class="cl">C. Lambert<i>86 %</i></span><span class="cl">S. et P. Durand<i>81 %</i></span></div>
+            <p class="why">Budget, secteur et nombre de chambres cochés. Point d'écart : 9 min de plus que souhaité jusqu'à l'école.</p>
+            <div class="go"><button class="btn cu sm">Envoyer le mail aux 3 clients</button><button class="btn sm">Voir le brouillon</button></div>
+          </div>
+          <div class="match">
+            <div class="bien"><b>Client · Mme Nguyen · T3 lumineux</b><span>Budget 320 000 € · Croix-Rousse ou 4e · balcon souhaité</span></div>
+            <div class="score"><div class="ring" style="--p:84"><em>84</em></div></div>
+            <div class="clients"><span class="cl">T3 rue d'Austerlitz<i>84 %</i></span><span class="cl">T3 bd des Canuts<i>79 %</i></span></div>
+            <div class="go"><button class="btn cu sm">Proposer les 2 biens</button></div>
+          </div>
+        </section>
+      </div>
+
+      <div class="col">
+        <section class="card">
+          <div class="card-h"><h2><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>Boîte mail triée <span class="ia">IA</span></h2><span class="meta">5 à traiter</span></div>
+          <div class="mail"><span class="dot" style="background:var(--crit)"></span><div><b>Notaire Me Carle : pièces manquantes</b><p>Il manque le diagnostic termites pour la vente Bertin. Brouillon de réponse prêt.</p></div><span class="h">08:12</span></div>
+          <div class="mail"><span class="dot" style="background:var(--warn)"></span><div><b>Nouvelle demande via le mini-site</b><p>Couple primo-accédant, budget 280 k€. Fiche client créée, à valider.</p></div><span class="h">07:46</span></div>
+          <div class="mail"><span class="dot" style="background:var(--ok)"></span><div><b>Avis client : Famille Roche</b><p>5/5, « suivi impeccable ». Proposé pour le mini-site.</p></div><span class="h">Hier</span></div>
+        </section>
+
+        <section class="card">
+          <div class="card-h"><h2><svg viewBox="0 0 24 24"><path d="M4 20h16M6 16l4-5 3 3 5-7"/></svg>Estimation en cours</h2><span class="meta">Chemin des Vignes</span></div>
+          <div class="estim-h"><b>Maison 4 p. · 96 m² · 1978</b><span class="price">412 000 €<small>valeur probable</small></span></div>
+          <div class="range" role="img" aria-label="Fourchette de 385 000 à 440 000 euros"><div class="band"></div><div class="pin"></div></div>
+          <div class="scale"><span>360 k€</span><span>385 k€</span><span>440 k€</span><span>470 k€</span></div>
+          <div class="dvf">
+            <div>Prix médian DVF<b>4 290 €/m²</b></div>
+            <div>Ventes comparables<b>12 sur 24 mois</b></div>
+            <div>Travaux estimés<b>− 18 500 €</b></div>
+          </div>
+          <div class="go" style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap"><button class="btn cu sm">Générer l'avis de valeur</button><button class="btn sm">Pré-remplir Laforêt Business</button></div>
+        </section>
+
+        <section class="card">
+          <div class="card-h"><h2><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/></svg>Synchronisation Laforêt</h2><span class="st wait">API en attente</span></div>
+          <div class="sync">
+            <div class="srow"><span>🏡</span><span>Maison 5 p., Caluire</span><span class="st wait">À synchroniser</span></div>
+            <div class="srow"><span>👤</span><span>Famille Moreau</span><span class="st wait">À synchroniser</span></div>
+            <div class="srow"><span>🏡</span><span>T3 rue d'Austerlitz</span><span class="st ok">Exporté</span></div>
+          </div>
+          <p class="note">En attendant l'API, chaque saisie est conservée ici et part dans Laforêt dès que la connexion est branchée.</p>
+        </section>
+
+        <section class="card">
+          <div class="card-h"><h2><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 10v7M8 7v.01M12 17v-4a2 2 0 0 1 4 0v4M12 10v7"/></svg>LinkedIn de la semaine <span class="ia">IA</span></h2></div>
+          <div class="post"><p>Une maison, c'est comme un match : on ne la gagne pas seul. Cette semaine, la famille Roche a signé après trois visites et une négociation menée ensemble…</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn cu sm">Programmer</button><button class="btn sm">Autre angle</button></div></div>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+(function(){
+  const boxes=[...document.querySelectorAll('#tasks input')];
+  const out=document.getElementById('progress');
+  function upd(){let n=0;boxes.forEach(b=>{b.closest('.task').classList.toggle('done',b.checked);if(b.checked)n++});out.textContent=n+' / '+boxes.length+' faites'}
+  boxes.forEach(b=>b.addEventListener('change',upd));
+  const rail=document.getElementById('rail'),bg=document.getElementById('burger');
+  bg.addEventListener('click',e=>{e.stopPropagation();const o=rail.classList.toggle('open');bg.setAttribute('aria-expanded',o)});
+  document.addEventListener('click',e=>{if(rail.classList.contains('open')&&!rail.contains(e.target)){rail.classList.remove('open');bg.setAttribute('aria-expanded','false')}});
+  document.addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();document.getElementById('q').focus()}});
+})();
+</script>
