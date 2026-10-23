@@ -49,9 +49,11 @@ export async function analyserNote(note: string): Promise<AnalyseResult> {
 
   // Une clé non rattachée à un espace de travail (sk-ant-usr-…) exige l'en-tête anthropic-workspace-id.
   const workspaceId = process.env.ANTHROPIC_WORKSPACE_ID;
-  const client = new Anthropic(
-    workspaceId ? { defaultHeaders: { 'anthropic-workspace-id': workspaceId } } : {}
-  );
+  const apiKey = process.env.ANTHROPIC_API_KEY.trim(); // une espace ou un retour à la ligne collé avec la clé la rend invalide
+  const client = new Anthropic({
+    apiKey,
+    ...(workspaceId ? { defaultHeaders: { 'anthropic-workspace-id': workspaceId.trim() } } : {})
+  });
   try {
     const response = await client.beta.messages.create({
       model: MODEL,
@@ -80,7 +82,12 @@ export async function analyserNote(note: string): Promise<AnalyseResult> {
     return { ok: true, data: parsed.data };
   } catch (error) {
     if (error instanceof Anthropic.AuthenticationError) {
-      return { ok: false, error: 'La clé Anthropic est invalide.' };
+      const k = process.env.ANTHROPIC_API_KEY?.trim() ?? '';
+      // Seuls le préfixe et la longueur sont montrés, jamais la clé.
+      return {
+        ok: false,
+        error: `La clé Anthropic est refusée (clé lue : ${k.slice(0, 13)}…, ${k.length} caractères). Vérifiez-la dans la console Anthropic et sur Vercel.`
+      };
     }
     if (error instanceof Anthropic.RateLimitError) {
       return { ok: false, error: 'Trop de demandes en même temps. Réessayez dans une minute.' };
