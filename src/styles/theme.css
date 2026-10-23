@@ -1,0 +1,16 @@
+@import './themes/forest-mind.css';
+
+body {
+  @apply overscroll-none;
+  font-family: var(--font-sans);
+}
+
+:root {
+  --header-height: calc(var(--spacing, 0.25rem) * 12 + 1px);
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
