@@ -83,10 +83,10 @@ export async function analyserNote(note: string): Promise<AnalyseResult> {
   } catch (error) {
     if (error instanceof Anthropic.AuthenticationError) {
       const k = process.env.ANTHROPIC_API_KEY?.trim() ?? '';
-      // Seuls le préfixe et la longueur sont montrés, jamais la clé.
+      // Même aperçu que la console Anthropic (16 premiers et 4 derniers caractères), jamais la clé entière.
       return {
         ok: false,
-        error: `La clé Anthropic est refusée (clé lue : ${k.slice(0, 13)}…, ${k.length} caractères). Vérifiez-la dans la console Anthropic et sur Vercel.`
+        error: `La clé Anthropic est refusée. Clé lue sur le serveur : ${k.slice(0, 16)}…${k.slice(-4)} (${k.length} caractères). Comparez avec la liste des clés de la console Anthropic.`
       };
     }
     if (error instanceof Anthropic.RateLimitError) {
