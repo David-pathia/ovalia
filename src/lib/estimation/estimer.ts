@@ -22,6 +22,8 @@ export type EstimationDetails = {
   marche: Marche;
   comparables: ComparableResume[];
   nbComparables: number;
+  /** Prix au m² indexés de toutes les ventes comparables (courbe de positionnement de l'avis de valeur). */
+  distributionM2?: number[];
   ajustements: Ajustement[];
   resultat: Resultat;
   tauxHonoraires: number;
@@ -34,7 +36,7 @@ export type EstimationDetails = {
 
 export type ComparableResume = Pick<
   Comparable,
-  'id' | 'date' | 'prix' | 'surface' | 'pieces' | 'terrain' | 'dependances' | 'adresse' | 'commune' | 'distanceKm' | 'prixM2' | 'prixM2Indexe' | 'poids'
+  'id' | 'lat' | 'lon' | 'date' | 'prix' | 'surface' | 'pieces' | 'terrain' | 'dependances' | 'adresse' | 'commune' | 'distanceKm' | 'prixM2' | 'prixM2Indexe' | 'poids'
 >;
 
 export type EstimationResult = { ok: true; analyseId: string } | { ok: false; error: string };
@@ -69,6 +71,8 @@ ${JSON.stringify(z.toJSONSchema(AjustementsSchema))}`;
 function resumeComparable(c: Comparable): ComparableResume {
   return {
     id: c.id,
+    lat: c.lat,
+    lon: c.lon,
     date: c.date,
     prix: c.prix,
     surface: c.surface,
@@ -115,6 +119,7 @@ export async function estimerBien(
       .select('points_forts, points_faibles, note_source')
       .eq('bien_id', bienId)
       .is('valeur_probable', null)
+      .neq('type', 'avis_valeur')
       .order('created_at', { ascending: false })
       .limit(1)
   ]);
@@ -205,6 +210,7 @@ export async function estimerBien(
     marche,
     comparables: top,
     nbComparables: comparables.length,
+    distributionM2: comparables.map((c) => Math.round(c.prixM2Indexe)),
     ajustements,
     resultat,
     tauxHonoraires: TAUX_HONORAIRES,

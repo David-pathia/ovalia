@@ -36,6 +36,15 @@ classif_projet `court_terme | moyen_terme | long_terme`. Champs Laforêt non mod
   extrêmes). La sélection est gardée par « Relancer » (`details.selection = 'manuelle'`, `details.ventesIds`).
 - Plus tard : API Laforêt (ventes du réseau) comme source de comparables prioritaire.
 
+## Avis de valeur (src/features/avis)
+- Éditeur `/dashboard/biens/[id]/avis` : prix présentés, textes, comparables (10 max), photos (bucket privé `biens`,
+  converties en JPEG 2 000 px côté navigateur), pages, destinataire, conseiller, agence. Enregistré dans `bien_analyses`
+  (type `avis_valeur`, valeur_probable nulle : à exclure des « lectures IA » avec `.neq('type', 'avis_valeur')`).
+- PDF : route `/dashboard/biens/[id]/avis/pdf` → `pdf/render.tsx` (données, cartes IGN WMS, marché DVF 3 ans, crédit)
+  → `pdf/document.tsx` (@react-pdf/renderer, charte Laforêt bleue, police Lexend dans `fonts/`, tracée par next.config).
+- Nombres : remplacer l'espace fine U+202F (absente de la police) ; préciser `lineHeight` sur les textes > 10 pt.
+- Ne jamais committer de PDF ou de données de clients réels.
+
 ## Sécurité
 - `src/proxy.ts` → `src/lib/supabase/session.ts` : toute route hors `/connexion` et `/auth` exige une session.
   Sans variables Supabase, tout est fermé.

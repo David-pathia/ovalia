@@ -35,6 +35,7 @@ export default async function BienPage({ params }: Props) {
       .select('id, synthese, points_forts, points_faibles, details')
       .eq('bien_id', id)
       .is('valeur_probable', null)
+      .neq('type', 'avis_valeur')
       .order('created_at', { ascending: false })
       .limit(1),
     supabase

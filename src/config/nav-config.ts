@@ -56,7 +56,8 @@ export const moduleDescriptions: Record<string, string> = {
     'Croisement automatique biens ↔ projets de recherche, avec un score et un mail prêt à envoyer.',
   estimations:
     'Aide à l’estimation à partir des ventes DVF du secteur, et pré-remplissage de Laforêt Business.',
-  'avis-de-valeur': 'Avis de valeur détaillé, chiffres et comparables à l’appui, exporté en PDF.',
+  'avis-de-valeur':
+    'Avis de valeur détaillé, chiffres et comparables à l’appui, exporté en PDF. Il se prépare depuis la fiche d’un bien estimé : bouton « Avis de valeur » du panneau Estimation.',
   mandats: 'Aide à la rédaction des mandats à partir de la fiche du bien et du client.',
   travaux: 'Outil d’estimation du coût des travaux à réaliser, poste par poste.',
   mails: 'Tri de la boîte mail, résumés et brouillons de réponse.',

@@ -21,6 +21,7 @@ type Row = {
   prix_bien: number | null;
   created_at: string;
   bien_analyses: {
+    type: string;
     synthese: string | null;
     points_forts: string[];
     valeur_probable: number | null;
@@ -36,7 +37,7 @@ export default async function BiensPage() {
   const { data, error } = await supabase
     .from('biens')
     .select(
-      'id, type, statut, ville, code_postal, surface, surface_terrain, pieces, chambres, annee_construction, prix_bien, created_at, bien_analyses(synthese, points_forts, valeur_probable, details), bien_contacts(role, contacts(nom, prenom))'
+      'id, type, statut, ville, code_postal, surface, surface_terrain, pieces, chambres, annee_construction, prix_bien, created_at, bien_analyses(type, synthese, points_forts, valeur_probable, details), bien_contacts(role, contacts(nom, prenom))'
     )
     .order('created_at', { ascending: false })
     .order('created_at', { referencedTable: 'bien_analyses', ascending: false });
@@ -73,7 +74,7 @@ export default async function BiensPage() {
 
       <ul className='grid gap-4 lg:grid-cols-2'>
         {biens.map((b) => {
-          const analyse = b.bien_analyses.find((a) => a.valeur_probable === null);
+          const analyse = b.bien_analyses.find((a) => a.valeur_probable === null && a.type !== 'avis_valeur');
           const estimation = b.bien_analyses.find((a) => a.valeur_probable !== null);
           const vendeur = b.bien_contacts.find((c) => c.role === 'vendeur')?.contacts;
           const aVerifier = analyse?.details?.a_verifier?.filter((q) => !q.traite).length ?? 0;

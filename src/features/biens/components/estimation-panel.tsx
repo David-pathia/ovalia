@@ -139,6 +139,9 @@ export function EstimationPanel({
           </p>
         </div>
         <div className='flex flex-wrap items-start gap-2'>
+          <Button size='sm' className='font-semibold' nativeButton={false} render={<Link href={`/dashboard/biens/${bienId}/avis`} />}>
+            <Icons.fileTypePdf /> Avis de valeur
+          </Button>
           <Button variant='outline' size='sm' nativeButton={false} render={<Link href={`/dashboard/marche?bien=${bienId}`} />}>
             <Icons.marche /> Choisir les comparables
           </Button>
