@@ -70,14 +70,22 @@ export function MarcheMap({
     };
   }, []);
 
+  // Fonds IGN (Géoplateforme) : gratuits, sans clé. En thème sombre, le plan est assombri par un filtre CSS.
   useEffect(() => {
-    if (!map.current) return;
-    tuiles.current?.remove();
-    const style = resolvedTheme === 'light' ? 'light_all' : 'dark_all';
-    tuiles.current = L.tileLayer(`https://{s}.basemaps.cartocdn.com/${style}/{z}/{x}/{y}{r}.png`, {
+    if (!map.current || tuiles.current) return;
+    const ign = (couche: string, format: string) =>
+      `https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=${couche}&STYLE=normal&TILEMATRIXSET=PM&FORMAT=${format}&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}`;
+    tuiles.current = L.tileLayer(ign('GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2', 'image/png'), {
       maxZoom: 19,
-      attribution: '© OpenStreetMap, © CARTO · ventes DVF (data.gouv.fr)'
+      className: 'ovalia-fond',
+      attribution: '© IGN Géoplateforme · ventes DVF (data.gouv.fr)'
     }).addTo(map.current);
+    const cadastre = L.tileLayer(ign('CADASTRALPARCELS.PARCELLAIRE_EXPRESS', 'image/png'), { maxZoom: 19, minZoom: 14, opacity: 0.7 });
+    L.control.layers(undefined, { 'Cadastre (zoomer)': cadastre }, { position: 'topright' }).addTo(map.current);
+  }, []);
+
+  useEffect(() => {
+    el.current?.toggleAttribute('data-sombre', resolvedTheme !== 'light');
   }, [resolvedTheme]);
 
   useEffect(() => {
@@ -125,9 +133,21 @@ export function MarcheMap({
       .addTo(couche.current);
   }, [centre, rayonKm, ventes, q1, q3, selection, selectionActive]);
 
+  // La carte est montée avant que son conteneur ait sa taille définitive : on recadre à chaque redimensionnement.
   useEffect(() => {
-    if (!map.current) return;
-    map.current.fitBounds(L.latLng(centre.lat, centre.lon).toBounds(rayonKm * 2000), { padding: [12, 12] });
+    if (!map.current || !el.current) return;
+    const cadrer = () => {
+      map.current?.invalidateSize();
+      map.current?.fitBounds(L.latLng(centre.lat, centre.lon).toBounds(rayonKm * 2000), { padding: [12, 12] });
+    };
+    cadrer();
+    const obs = new ResizeObserver(() => map.current?.invalidateSize());
+    obs.observe(el.current);
+    const t = window.setTimeout(cadrer, 150);
+    return () => {
+      obs.disconnect();
+      window.clearTimeout(t);
+    };
   }, [centre.lat, centre.lon, rayonKm]);
 
   useEffect(() => {
@@ -138,5 +158,12 @@ export function MarcheMap({
     }
   }, [focus]);
 
-  return <div ref={el} className='h-[420px] w-full rounded-xl border' role='region' aria-label='Carte des ventes' />;
+  return (
+    <div
+      ref={el}
+      className='h-[420px] w-full rounded-xl border [&[data-sombre]_.ovalia-fond]:[filter:invert(1)_hue-rotate(180deg)_brightness(0.85)_saturate(0.6)]'
+      role='region'
+      aria-label='Carte des ventes'
+    />
+  );
 }
