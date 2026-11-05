@@ -45,7 +45,7 @@ export type Resultat = {
 };
 
 const AUJOURDHUI = () => Date.now();
-const moisDepuis = (date: string) => (AUJOURDHUI() - new Date(date).getTime()) / (1000 * 60 * 60 * 24 * 30.44);
+export const moisDepuis = (date: string) => (AUJOURDHUI() - new Date(date).getTime()) / (1000 * 60 * 60 * 24 * 30.44);
 
 function quantilePondere(valeurs: { v: number; w: number }[], q: number) {
   const tri = [...valeurs].sort((a, b) => a.v - b.v);
@@ -65,7 +65,7 @@ const mediane = (xs: number[]) => {
 };
 
 /** Évolution annuelle du prix au m² dans la zone (régression sur les médianes par semestre), bornée à ±10 %/an. */
-function tendance(ventes: Vente[]): number | null {
+export function tendance(ventes: Vente[]): number | null {
   const parSemestre = new Map<number, number[]>();
   for (const v of ventes) {
     const d = new Date(v.date);
@@ -164,6 +164,56 @@ export function selectionnerComparables(
     };
   }
   return null;
+}
+
+/**
+ * Marché calculé sur les ventes choisies par le conseiller : mêmes pondérations et même indexation
+ * que la sélection automatique, mais sans retrait des extrêmes (c'est son choix d'expert).
+ */
+export function marcheSurSelection(
+  bien: BienEstime,
+  choisies: Vente[],
+  zone: Vente[],
+  origine: Point,
+  precisionAdresse: boolean
+): { comparables: Comparable[]; marche: Marche } | null {
+  if (choisies.length < 3 || !(bien.surface > 0)) return null;
+  const evolution = tendance(zone.filter((v) => v.type === choisies[0]!.type));
+  const comparables: Comparable[] = choisies
+    .map((v) => {
+      const d = v.lat !== null && v.lon !== null ? distanceKm(origine, { lat: v.lat, lon: v.lon }) : null;
+      const mois = moisDepuis(v.date);
+      const prixM2 = v.prix / v.surface;
+      const prixM2Indexe = evolution === null ? prixM2 : prixM2 * (1 + evolution) ** (mois / 12);
+      const wTemps = Math.max(0.25, 1 - mois / 72);
+      const wSurface = 1 - Math.min(0.6, Math.abs(v.surface - bien.surface) / bien.surface);
+      const wDistance = d === null ? 0.6 : precisionAdresse ? 1 / (1 + d / 1.5) : 1 / (1 + d / 4);
+      return { ...v, distanceKm: d, prixM2, prixM2Indexe, poids: wTemps * wSurface * wDistance };
+    })
+    .sort((a, b) => b.poids - a.poids);
+
+  const pts = comparables.map((c) => ({ v: c.prixM2Indexe, w: c.poids }));
+  const prixM2 = quantilePondere(pts, 0.5);
+  const prixM2Bas = quantilePondere(pts, 0.25);
+  const prixM2Haut = quantilePondere(pts, 0.75);
+  const dispersion = (prixM2Haut - prixM2Bas) / prixM2;
+  const recentes = comparables.filter((c) => moisDepuis(c.date) <= 24).length;
+  const confiance: Marche['confiance'] =
+    comparables.length >= 8 && dispersion < 0.3 && recentes >= 3 ? 'élevée' : comparables.length >= 5 && dispersion < 0.5 ? 'moyenne' : 'faible';
+  const rayon = Math.max(0, ...comparables.map((c) => c.distanceKm ?? 0));
+  return {
+    comparables,
+    marche: {
+      prixM2,
+      prixM2Bas,
+      prixM2Haut,
+      nbVentesZone: zone.length,
+      rayonKm: Math.ceil(rayon * 10) / 10,
+      tendanceAnnuelle: evolution,
+      confiance,
+      criteres: `Sélection du conseiller : ${comparables.length} ventes choisies sur la carte (jusqu’à ${Math.ceil(rayon * 10) / 10} km)`
+    }
+  };
 }
 
 const arrondi = (n: number, pas: number) => Math.round(n / pas) * pas;

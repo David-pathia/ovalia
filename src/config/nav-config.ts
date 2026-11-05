@@ -23,6 +23,7 @@ export const navGroups: NavGroup[] = [
   {
     label: 'Expertise',
     items: [
+      { title: 'Marché', url: '/dashboard/marche', icon: 'marche', shortcut: ['m', 'k'], items: [] },
       { title: 'Estimations', url: '/dashboard/estimations', icon: 'estimation', shortcut: ['e', 'e'], label: 'Bientôt', items: [] },
       { title: 'Avis de valeur', url: '/dashboard/avis-de-valeur', icon: 'avisValeur', label: 'Bientôt', items: [] },
       { title: 'Mandats', url: '/dashboard/mandats', icon: 'mandat', shortcut: ['m', 'm'], label: 'Bientôt', items: [] },

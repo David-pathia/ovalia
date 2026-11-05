@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -28,7 +29,17 @@ const confianceStyle = {
   faible: 'bg-crit/15 text-crit'
 } as const;
 
-function Relancer({ bienId, label, disabledReason }: { bienId: string; label: string; disabledReason?: string | null }) {
+function Relancer({
+  bienId,
+  label,
+  disabledReason,
+  mode = 'garder'
+}: {
+  bienId: string;
+  label: string;
+  disabledReason?: string | null;
+  mode?: 'garder' | 'auto';
+}) {
   const router = useRouter();
   const [pending, start] = useTransition();
   return (
@@ -39,7 +50,7 @@ function Relancer({ bienId, label, disabledReason }: { bienId: string; label: st
         disabled={pending || Boolean(disabledReason)}
         onClick={() =>
           start(async () => {
-            const res = await relancerEstimation(bienId);
+            const res = await relancerEstimation(bienId, mode);
             if (res.ok) {
               toast.success('Estimation mise à jour');
               router.refresh();
@@ -121,12 +132,19 @@ export function EstimationPanel({
             </span>
           </h2>
           <p className='text-muted-foreground mt-1 text-xs'>
+            {d.selection === 'manuelle' && <span className='text-cuivre font-semibold'>Sélection manuelle · </span>}
             {d.nbComparables} ventes comparables · {d.marche.criteres} · calculée le{' '}
             {new Date(estimation.createdAt).toLocaleDateString('fr-FR')}
             {d.localisation.precision === 'commune' && ' · position approximative (centre de la commune)'}
           </p>
         </div>
-        <Relancer bienId={bienId} label='Relancer' />
+        <div className='flex flex-wrap items-start gap-2'>
+          <Button variant='outline' size='sm' nativeButton={false} render={<Link href={`/dashboard/marche?bien=${bienId}`} />}>
+            <Icons.marche /> Choisir les comparables
+          </Button>
+          <Relancer bienId={bienId} label='Relancer' />
+          {d.selection === 'manuelle' && <Relancer bienId={bienId} label='Revenir à l’automatique' mode='auto' />}
+        </div>
       </header>
 
       <div className='grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]'>

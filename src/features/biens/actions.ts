@@ -119,10 +119,35 @@ export async function mettreAJourBien(bienId: string, input: unknown): Promise<A
   return { ok: true };
 }
 
-export async function relancerEstimation(bienId: string): Promise<ActionResult> {
+/** Relance l'estimation ; garde la sélection manuelle de comparables si la dernière estimation en avait une. */
+export async function relancerEstimation(bienId: string, mode: 'garder' | 'auto' = 'garder'): Promise<ActionResult> {
   const { supabase, user } = await session();
   if (!user) return { ok: false, error: 'Session expirée : reconnectez-vous.' };
-  const res = await estimerBien(supabase, bienId);
+  let ventesIds: string[] | undefined;
+  if (mode === 'garder') {
+    const { data } = await supabase
+      .from('bien_analyses')
+      .select('details')
+      .eq('bien_id', bienId)
+      .not('valeur_probable', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(1);
+    const d = data?.[0]?.details as EstimationDetails | undefined;
+    if (d?.selection === 'manuelle') ventesIds = d.ventesIds;
+  }
+  const res = await estimerBien(supabase, bienId, { ventesIds });
+  if (!res.ok) return res;
+  revalidatePath('/dashboard/biens');
+  revalidatePath(`/dashboard/biens/${bienId}`);
+  return { ok: true };
+}
+
+export async function estimerAvecSelection(bienId: string, ventesIds: string[]): Promise<ActionResult> {
+  const { supabase, user } = await session();
+  if (!user) return { ok: false, error: 'Session expirée : reconnectez-vous.' };
+  const ids = z.array(z.string().min(1).max(40)).min(3).max(60).safeParse(ventesIds);
+  if (!ids.success) return { ok: false, error: 'Choisissez entre 3 et 60 ventes comparables.' };
+  const res = await estimerBien(supabase, bienId, { ventesIds: ids.data });
   if (!res.ok) return res;
   revalidatePath('/dashboard/biens');
   revalidatePath(`/dashboard/biens/${bienId}`);

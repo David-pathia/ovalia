@@ -6,6 +6,7 @@ import { communesProches, localiser, ventesDvf } from './dvf';
 import {
   TAUX_HONORAIRES,
   calculerValeurs,
+  marcheSurSelection,
   selectionnerComparables,
   type Ajustement,
   type Comparable,
@@ -24,13 +25,16 @@ export type EstimationDetails = {
   ajustements: Ajustement[];
   resultat: Resultat;
   tauxHonoraires: number;
+  /** « manuelle » : ventes choisies par le conseiller sur la page Marché (identifiants DVF dans `ventesIds`). */
+  selection?: 'auto' | 'manuelle';
+  ventesIds?: string[];
   strategie: string | null;
   iaErreur: string | null;
 };
 
 export type ComparableResume = Pick<
   Comparable,
-  'date' | 'prix' | 'surface' | 'pieces' | 'terrain' | 'dependances' | 'adresse' | 'commune' | 'distanceKm' | 'prixM2' | 'prixM2Indexe' | 'poids'
+  'id' | 'date' | 'prix' | 'surface' | 'pieces' | 'terrain' | 'dependances' | 'adresse' | 'commune' | 'distanceKm' | 'prixM2' | 'prixM2Indexe' | 'poids'
 >;
 
 export type EstimationResult = { ok: true; analyseId: string } | { ok: false; error: string };
@@ -64,6 +68,7 @@ ${JSON.stringify(z.toJSONSchema(AjustementsSchema))}`;
 
 function resumeComparable(c: Comparable): ComparableResume {
   return {
+    id: c.id,
     date: c.date,
     prix: c.prix,
     surface: c.surface,
@@ -97,7 +102,11 @@ async function proposerAjustements(contexte: string) {
 }
 
 /** Estime un bien à partir des ventes DVF et enregistre le résultat dans `bien_analyses`. */
-export async function estimerBien(supabase: SupabaseClient, bienId: string): Promise<EstimationResult> {
+export async function estimerBien(
+  supabase: SupabaseClient,
+  bienId: string,
+  options: { ventesIds?: string[] } = {}
+): Promise<EstimationResult> {
   const [{ data: bien }, { data: pieces }, { data: lectures }] = await Promise.all([
     supabase.from('biens').select('*').eq('id', bienId).maybeSingle(),
     supabase.from('bien_pieces').select('nom, surface').eq('bien_id', bienId).order('ordre'),
@@ -121,17 +130,25 @@ export async function estimerBien(supabase: SupabaseClient, bienId: string): Pro
 
   const communes = (await communesProches(loc, 8)).slice(0, 12);
   const ventes = await ventesDvf(communes.map((c) => c.code));
-  const selection = selectionnerComparables(
-    { type: bien.type, surface, pieces: bien.pieces, terrain: bien.surface_terrain ? Number(bien.surface_terrain) : null },
-    ventes,
-    loc,
-    loc.precision === 'adresse'
-  );
-  if (!selection) {
-    return { ok: false, error: `Pas assez de ventes comparables autour de ${loc.commune} pour estimer ce bien.` };
+  const bienEstime = { type: bien.type, surface, pieces: bien.pieces, terrain: bien.surface_terrain ? Number(bien.surface_terrain) : null };
+  const manuelle = Boolean(options.ventesIds?.length);
+  let selection;
+  if (manuelle) {
+    const ids = new Set(options.ventesIds);
+    // Les ventes choisies peuvent venir d'une commune plus éloignée que le rayon automatique.
+    const manquantes = options.ventesIds!.length - ventes.filter((v) => ids.has(v.id)).length;
+    const pool = manquantes > 0 ? [...ventes, ...(await ventesDvf((await communesProches(loc, 25)).slice(0, 40).map((c) => c.code)))] : ventes;
+    const choisies = [...new Map(pool.filter((v) => ids.has(v.id)).map((v) => [v.id, v])).values()];
+    selection = marcheSurSelection(bienEstime, choisies, ventes, loc, loc.precision === 'adresse');
+    if (!selection) return { ok: false, error: 'Choisissez au moins 3 ventes comparables.' };
+  } else {
+    selection = selectionnerComparables(bienEstime, ventes, loc, loc.precision === 'adresse');
+    if (!selection) {
+      return { ok: false, error: `Pas assez de ventes comparables autour de ${loc.commune} pour estimer ce bien.` };
+    }
   }
   const { comparables, marche } = selection;
-  const top = comparables.slice(0, 15).map(resumeComparable);
+  const top = comparables.slice(0, manuelle ? 60 : 15).map(resumeComparable);
 
   const lecture = lectures?.[0];
   const contexte = JSON.stringify(
@@ -191,6 +208,8 @@ export async function estimerBien(supabase: SupabaseClient, bienId: string): Pro
     ajustements,
     resultat,
     tauxHonoraires: TAUX_HONORAIRES,
+    selection: manuelle ? 'manuelle' : 'auto',
+    ventesIds: manuelle ? comparables.map((c) => c.id) : undefined,
     strategie: 'erreur' in ia ? null : ia.strategie,
     iaErreur: 'erreur' in ia ? (ia.erreur ?? null) : null
   };

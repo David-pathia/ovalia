@@ -30,6 +30,10 @@ classif_projet `court_terme | moyen_terme | long_terme`. Champs Laforêt non mod
 - `estimer.ts` : orchestre et demande à Claude les ajustements chiffrés + argumentaire + stratégie ;
   le prix ne vient jamais du modèle. Résultat dans `bien_analyses` (valeur_probable non nulle = estimation,
   nulle = lecture de la saisie rapide). Lancée en arrière-plan (`after`) après saisie / 1re mise à jour.
+- Page Marché (`src/features/marche`, `/dashboard/marche`) : recherche DVF par adresse/commune + rayon + filtres,
+  carte Leaflet (fonds CARTO), indicateurs, médiane par semestre, par commune, tableau triable, export CSV (2 500 lignes max).
+  Avec `?bien=<id>` : choix manuel des comparables → `estimerAvecSelection` → `marcheSurSelection` (pas de retrait des
+  extrêmes). La sélection est gardée par « Relancer » (`details.selection = 'manuelle'`, `details.ventesIds`).
 - Plus tard : API Laforêt (ventes du réseau) comme source de comparables prioritaire.
 
 ## Sécurité

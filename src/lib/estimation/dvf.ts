@@ -60,6 +60,24 @@ export async function localiser(bien: {
   return { lon: c.centre.coordinates[0], lat: c.centre.coordinates[1], codeInsee: c.code, commune: c.nom, precision: 'commune' };
 }
 
+/** Géocode un texte libre (adresse, commune, code postal) avec la Base Adresse Nationale. */
+export async function geocoder(texte: string): Promise<Localisation | null> {
+  const q = encodeURIComponent(texte.trim());
+  if (!q) return null;
+  const r = await getJson<{
+    features: { geometry: { coordinates: [number, number] }; properties: { citycode: string; city: string; score: number; type: string } }[];
+  }>(`https://api-adresse.data.gouv.fr/search/?q=${q}&limit=1`);
+  const f = r?.features?.[0];
+  if (!f || f.properties.score < 0.3) return null;
+  return {
+    lon: f.geometry.coordinates[0],
+    lat: f.geometry.coordinates[1],
+    codeInsee: f.properties.citycode,
+    commune: f.properties.city,
+    precision: f.properties.type === 'municipality' ? 'commune' : 'adresse'
+  };
+}
+
 /** Communes du département dont le centre est à moins de `rayonKm` du point, la plus proche en premier. */
 export async function communesProches(loc: Localisation, rayonKm: number) {
   const dep = loc.codeInsee.startsWith('97') ? loc.codeInsee.slice(0, 3) : loc.codeInsee.slice(0, 2);

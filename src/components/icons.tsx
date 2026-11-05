@@ -1,4 +1,6 @@
 import {
+  IconDownload,
+  IconMapSearch,
   IconArrowsLeftRight,
   IconBrandLinkedin,
   IconBuildingEstate,
@@ -105,6 +107,8 @@ export type Icon = React.ComponentType<IconProps>;
 
 export const Icons = {
   // Ovalia
+  marche: IconMapSearch,
+  download: IconDownload,
   today: IconHome,
   bien: IconBuildingEstate,
   rapprochement: IconArrowsLeftRight,
