@@ -114,7 +114,7 @@ export function FinancementPanel({
       ) : (
         <>
           <div className='grid grid-cols-2 gap-3 sm:grid-cols-5'>
-            <NumberField id='fin-prix' label='Prix (FAI)' unit='€' value={prix} onChange={setPrix} />
+            <NumberField id='fin-prix' label='Prix' unit='€' value={prix} onChange={setPrix} />
             <NumberField id='fin-notaire' label='Notaire' unit='%' value={notairePct} onChange={setNotairePct} />
             <NumberField id='fin-travaux' label='Travaux' unit='€' value={travaux} onChange={setTravaux} />
             <NumberField id='fin-apport' label='Apport' unit='%' value={apportPct} onChange={setApportPct} />

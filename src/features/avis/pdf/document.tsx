@@ -1056,11 +1056,7 @@ function Annonce({ d }: { d: AvisPdfData }) {
           >
             {eur(avis.prix.conseille)}
           </Text>
-          <Text style={{ color: C.trait, fontSize: 7.5 }}>
-            {a.honoraires === 'acquereur'
-              ? 'honoraires inclus'
-              : 'honoraires à la charge du vendeur'}
-          </Text>
+          <Text style={{ color: C.trait, fontSize: 7.5 }}>net vendeur</Text>
         </View>
       </View>
 

@@ -162,7 +162,7 @@ export function AvisEditor({
   initial: AvisDetails;
   comparables: ComparableResume[];
   photosInitiales: PhotoEditeur[];
-  suggestion: { basse: number; haute: number; conseille: number };
+  suggestion: { basse: number; haute: number; conseille: number; retenu: number | null };
   infos: InfosAnnonce;
 }) {
   const router = useRouter();
@@ -235,7 +235,6 @@ export function AvisEditor({
   const longueurTitre = avis.annonce.titre.length;
 
   const triees = [...comparables].sort((a, b) => b.poids - a.poids);
-  const honoraires = Math.round(avis.prix.conseille * avis.prix.tauxHonoraires);
 
   const enregistrer = (puisPdf: boolean) => {
     setErreur(null);
@@ -418,7 +417,7 @@ export function AvisEditor({
       <div className='flex min-w-0 flex-col gap-5'>
         <Bloc
           titre='Prix présentés au client'
-          aide='Fourchette arrondie et prix de présentation : ce sont les chiffres qui figureront en page « Notre estimation ».'
+          aide='Fourchette et prix net vendeur conseillé de la page « Notre avis de valeur ». Tous les prix sont nets vendeur, sans honoraires. Le prix net vendeur enregistré ici devient aussi celui de la fiche du bien.'
         >
           <div className='grid grid-cols-2 gap-3 sm:grid-cols-3'>
             <Champ id='a-basse' label='Fourchette basse (€)'>
@@ -441,7 +440,7 @@ export function AvisEditor({
             </Champ>
             <Champ
               id='a-conseille'
-              label='Prix de présentation, honoraires inclus (€)'
+              label='Prix net vendeur conseillé (€)'
               className='col-span-2 sm:col-span-1'
             >
               <Input
@@ -454,14 +453,9 @@ export function AvisEditor({
             </Champ>
           </div>
           <p className='text-muted-foreground mt-3 text-xs tabular-nums'>
-            Estimation DVF : {eur(suggestion.basse)} à {eur(suggestion.haute)}, prix conseillé{' '}
-            {eur(suggestion.conseille)}. Honoraires{' '}
-            {(avis.prix.tauxHonoraires * 100).toLocaleString('fr-FR')} % : {eur(honoraires)} · net
-            vendeur{' '}
-            <span className='text-foreground font-semibold'>
-              {eur(avis.prix.conseille - honoraires)}
-            </span>
-            .
+            Estimation DVF : {eur(suggestion.basse)} à {eur(suggestion.haute)}, net vendeur estimé{' '}
+            {eur(suggestion.conseille)}
+            {suggestion.retenu ? ` · net vendeur retenu ${eur(suggestion.retenu)}` : ''}.
           </p>
         </Bloc>
 
@@ -695,26 +689,6 @@ export function AvisEditor({
               </div>
             </div>
             <div className='grid gap-3 sm:grid-cols-2'>
-              <div className='space-y-1.5'>
-                <p className='text-muted-foreground text-xs'>Honoraires</p>
-                <div className='flex gap-2'>
-                  {(
-                    [
-                      ['vendeur', 'Charge vendeur'],
-                      ['acquereur', 'Charge acquéreur']
-                    ] as const
-                  ).map(([k, l]) => (
-                    <Button
-                      key={k}
-                      size='sm'
-                      variant={avis.annonce.honoraires === k ? 'secondary' : 'outline'}
-                      onClick={() => majAnnonce('honoraires', k)}
-                    >
-                      {l}
-                    </Button>
-                  ))}
-                </div>
-              </div>
               <Champ id='an-energie' label='Dépenses annuelles d’énergie (DPE)'>
                 <Input
                   id='an-energie'

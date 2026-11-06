@@ -6,7 +6,6 @@ import { genererAnnonce, type AnnonceIA } from '@/lib/ai/annonce';
 import { genererSynthese, type SyntheseBien } from '@/lib/ai/synthese';
 import { communesProches, localiser, ventesDvf } from './dvf';
 import {
-  TAUX_HONORAIRES,
   calculerValeurs,
   moisDepuis,
   marcheSurSelection,
@@ -35,7 +34,10 @@ export type EstimationDetails = {
   distributionM2?: number[];
   ajustements: Ajustement[];
   resultat: Resultat;
+  /** Toujours 0 : l'estimation ne parle que de net vendeur (champ gardé pour les anciennes estimations). */
   tauxHonoraires: number;
+  /** Prix net vendeur saisi par le conseiller quand l'estimation ne lui convient pas. */
+  prixRetenu?: number | null;
   /** « manuelle » : ventes choisies par le conseiller sur la page Marché (identifiants DVF dans `ventesIds`). */
   selection?: 'auto' | 'manuelle';
   ventesIds?: string[];
@@ -43,7 +45,7 @@ export type EstimationDetails = {
   iaErreur: string | null;
   /** Points forts, points de vigilance et cible acquéreur (avis de valeur). */
   synthese?: SyntheseBien | null;
-  /** Ancienneté maximale des ventes comparables (3 ans, 5 si le secteur manque de ventes). */
+  /** Ancienneté maximale des ventes comparables, en années (3 ; 5 pour les anciennes estimations). */
   periodeAns?: number;
   /** Projet d'annonce (ton chaleureux) rédigé avec l'estimation, repris par l'avis de valeur. */
   annonce?: AnnonceIA | null;
@@ -152,22 +154,31 @@ export async function estimerBien(
   bienId: string,
   options: { ventesIds?: string[] } = {}
 ): Promise<EstimationResult> {
-  const [{ data: bien }, { data: pieces }, { data: lectures }] = await Promise.all([
-    supabase.from('biens').select('*').eq('id', bienId).maybeSingle(),
-    supabase
-      .from('bien_pieces')
-      .select('nom, surface, niveau')
-      .eq('bien_id', bienId)
-      .order('ordre'),
-    supabase
-      .from('bien_analyses')
-      .select('points_forts, points_faibles, note_source')
-      .eq('bien_id', bienId)
-      .is('valeur_probable', null)
-      .neq('type', 'avis_valeur')
-      .order('created_at', { ascending: false })
-      .limit(1)
-  ]);
+  const [{ data: bien }, { data: pieces }, { data: lectures }, { data: precedente }] =
+    await Promise.all([
+      supabase.from('biens').select('*').eq('id', bienId).maybeSingle(),
+      supabase
+        .from('bien_pieces')
+        .select('nom, surface, niveau')
+        .eq('bien_id', bienId)
+        .order('ordre'),
+      supabase
+        .from('bien_analyses')
+        .select('points_forts, points_faibles, note_source')
+        .eq('bien_id', bienId)
+        .is('valeur_probable', null)
+        .neq('type', 'avis_valeur')
+        .order('created_at', { ascending: false })
+        .limit(1),
+      // Le prix net vendeur saisi par le conseiller est conservé d'une estimation à l'autre.
+      supabase
+        .from('bien_analyses')
+        .select('details')
+        .eq('bien_id', bienId)
+        .not('valeur_probable', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+    ]);
   if (!bien) return { ok: false, error: 'Bien introuvable.' };
   if (bien.type !== 'maison' && bien.type !== 'appartement') {
     return {
@@ -190,7 +201,13 @@ export async function estimerBien(
     };
 
   const communes = (await communesProches(loc, 8)).slice(0, 12);
-  const ventes = await ventesDvf(communes.map((c) => c.code));
+  // Ventes des 3 dernières années uniquement.
+  const ventes = (
+    await ventesDvf(
+      communes.map((c) => c.code),
+      3
+    )
+  ).filter((v) => moisDepuis(v.date) <= 36);
   const bienEstime = {
     type: bien.type,
     surface,
@@ -199,7 +216,6 @@ export async function estimerBien(
   };
   const manuelle = Boolean(options.ventesIds?.length);
   let selection;
-  let periodeAns = 5;
   if (manuelle) {
     const ids = new Set(options.ventesIds);
     // Les ventes choisies peuvent venir d'une commune plus éloignée que le rayon automatique.
@@ -208,21 +224,17 @@ export async function estimerBien(
       manquantes > 0
         ? [
             ...ventes,
-            ...(await ventesDvf((await communesProches(loc, 25)).slice(0, 40).map((c) => c.code)))
+            ...(await ventesDvf(
+              (await communesProches(loc, 25)).slice(0, 40).map((c) => c.code),
+              3
+            ))
           ]
         : ventes;
     const choisies = [...new Map(pool.filter((v) => ids.has(v.id)).map((v) => [v.id, v])).values()];
     selection = marcheSurSelection(bienEstime, choisies, ventes, loc, loc.precision === 'adresse');
     if (!selection) return { ok: false, error: 'Choisissez au moins 3 ventes comparables.' };
   } else {
-    // Ventes des 3 dernières années en priorité ; 5 ans seulement si le secteur en compte trop peu.
-    const recentes = ventes.filter((v) => moisDepuis(v.date) <= 36);
-    const sur3ans = selectionnerComparables(bienEstime, recentes, loc, loc.precision === 'adresse');
-    if (sur3ans && sur3ans.comparables.length >= 8) {
-      selection = sur3ans;
-      periodeAns = 3;
-    } else
-      selection = selectionnerComparables(bienEstime, ventes, loc, loc.precision === 'adresse');
+    selection = selectionnerComparables(bienEstime, ventes, loc, loc.precision === 'adresse');
     if (!selection) {
       return {
         ok: false,
@@ -316,14 +328,15 @@ export async function estimerBien(
     distributionM2: comparables.map((c) => Math.round(c.prixM2Indexe)),
     ajustements,
     resultat,
-    tauxHonoraires: TAUX_HONORAIRES,
+    tauxHonoraires: 0,
+    prixRetenu: (precedente?.[0]?.details as EstimationDetails | undefined)?.prixRetenu ?? null,
     selection: manuelle ? 'manuelle' : 'auto',
     ventesIds: manuelle ? comparables.map((c) => c.id) : undefined,
     strategie: 'erreur' in ia ? null : ia.strategie,
     iaErreur: 'erreur' in ia ? (ia.erreur ?? null) : null,
     annonce: annonce.ok ? annonce.annonce : null,
     synthese: synthese.ok ? synthese.synthese : null,
-    periodeAns
+    periodeAns: 3
   };
 
   const { data: analyse, error } = await supabase

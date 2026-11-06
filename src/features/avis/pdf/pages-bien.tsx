@@ -339,8 +339,8 @@ export function StrategiePrix({ d }: { d: AvisPdfData }) {
             </View>
           ) : null}
           <Text style={[s.petit, { marginTop: 4 }]}>
-            Le raisonnement porte sur le prix frais d’agence inclus, celui qu’utilisent les
-            acquéreurs.
+            Le raisonnement porte sur le prix affiché dans l’annonce, celui qu’utilisent les
+            acquéreurs dans leurs recherches.
           </Text>
         </View>
       </View>
@@ -543,7 +543,6 @@ export function CibleFinancement({ d }: { d: AvisPdfData }) {
 
 export function AvisFinal({ d }: { d: AvisPdfData }) {
   const { avis, bien } = d;
-  const hono = Math.round(avis.prix.conseille * avis.prix.tauxHonoraires);
   const assainissement = typeAssainissement(bien.assainissement);
   const reserves = [
     !bien.dpe_classe
@@ -603,15 +602,14 @@ export function AvisFinal({ d }: { d: AvisPdfData }) {
           }}
         >
           <Text style={{ color: C.trait, fontSize: 8.5, letterSpacing: 1 }}>
-            PRIX DE PRÉSENTATION CONSEILLÉ
+            PRIX NET VENDEUR CONSEILLÉ
           </Text>
           <Text style={{ color: C.blanc, fontSize: 30, fontWeight: 700, lineHeight: 1.2 }}>
             {eur(avis.prix.conseille)}
           </Text>
-          <Text style={{ color: C.trait, fontSize: 8.5 }}>frais d’agence inclus</Text>
         </View>
         <Text style={[s.petit, { marginTop: 6 }]}>
-          {`Dont honoraires ${eur(hono)} (${nb(avis.prix.tauxHonoraires * 100, 2)} %) · net vendeur ${eur(avis.prix.conseille - hono)} · estimation du ${dateLongue(avis.dateAvis)}`}
+          {`Estimation établie le ${dateLongue(avis.dateAvis)}`}
         </Text>
       </View>
 

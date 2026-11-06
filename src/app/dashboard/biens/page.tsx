@@ -25,7 +25,7 @@ type Row = {
     synthese: string | null;
     points_forts: string[];
     valeur_probable: number | null;
-    details: { a_verifier?: { traite?: boolean }[]; resultat?: { prixConseille: number } };
+    details: { a_verifier?: { traite?: boolean }[]; resultat?: { prixConseille: number }; prixRetenu?: number | null };
   }[];
   bien_contacts: { role: string; contacts: { nom: string; prenom: string | null } | null }[];
 };
@@ -112,9 +112,11 @@ export default async function BiensPage() {
               {estimation?.details.resultat ? (
                 <p className='mt-2'>
                   <span className='font-display text-cuivre text-xl font-extrabold tabular-nums'>
-                    {fmt.format(estimation.details.resultat.prixConseille)} €
+                    {fmt.format(estimation.details.prixRetenu ?? estimation.details.resultat.prixConseille)} €
                   </span>
-                  <span className='text-muted-foreground ml-2 text-xs'>prix conseillé (estimation DVF)</span>
+                  <span className='text-muted-foreground ml-2 text-xs'>
+                    {estimation.details.prixRetenu ? 'net vendeur retenu' : 'net vendeur estimé (DVF)'}
+                  </span>
                 </p>
               ) : b.prix_bien ? (
                 <p className='font-display mt-2 text-xl font-extrabold tabular-nums'>{fmt.format(b.prix_bien)} €</p>

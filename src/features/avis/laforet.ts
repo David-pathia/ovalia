@@ -182,7 +182,7 @@ export function typeAssainissement(v: unknown): 'collectif' | 'non_collectif' | 
 }
 
 /**
- * Seuils de recherche des portails (paliers de 50 000 €) : si le prix FAI dépasse de peu un palier,
+ * Seuils de recherche des portails (paliers de 50 000 €) : si le prix affiché dépasse de peu un palier,
  * le bien disparaît des recherches « jusqu'à » ce palier. Renvoie le prix conseillé juste sous le palier.
  */
 export function seuilRecherche(

@@ -144,6 +144,25 @@ export async function enregistrerAvis(bienId: string, input: unknown): Promise<A
     console.error('avis.enregistrer', error);
     return { ok: false, error: 'L’avis n’a pas pu être enregistré.' };
   }
+  // Un seul prix net vendeur par bien : celui de l'avis devient le prix retenu de l'estimation.
+  const { data: est } = await supabase
+    .from('bien_analyses')
+    .select('details')
+    .eq('id', details.estimationId)
+    .maybeSingle();
+  if (est) {
+    const d = est.details as { resultat?: { prixConseille?: number }; prixRetenu?: number | null };
+    const prixRetenu =
+      details.prix.conseille === d.resultat?.prixConseille ? null : details.prix.conseille;
+    if ((d.prixRetenu ?? null) !== prixRetenu) {
+      await supabase
+        .from('bien_analyses')
+        .update({ details: { ...d, prixRetenu } })
+        .eq('id', details.estimationId);
+      revalidatePath(`/dashboard/biens/${bienId}`);
+      revalidatePath('/dashboard/biens');
+    }
+  }
   revalidatePath(`/dashboard/biens/${bienId}/avis`);
   return { ok: true, avisId: data.id as string };
 }

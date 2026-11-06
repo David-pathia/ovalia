@@ -73,7 +73,8 @@ export default async function AvisPage({ params }: { params: Promise<{ id: strin
           suggestion={{
             basse: estimation.details.resultat.valeurBasse,
             haute: estimation.details.resultat.valeurHaute,
-            conseille: estimation.details.resultat.prixConseille
+            conseille: estimation.details.resultat.prixConseille,
+            retenu: estimation.details.prixRetenu ?? null
           }}
           infos={infosAnnonce(bien)}
         />

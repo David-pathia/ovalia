@@ -183,6 +183,25 @@ export async function modifierAjustements(analyseId: string, input: unknown): Pr
   return { ok: true };
 }
 
+/** Fixe (ou efface, avec null) le prix net vendeur retenu par le conseiller quand l'estimation ne lui convient pas. */
+export async function fixerPrixNetVendeur(analyseId: string, prix: number | null): Promise<ActionResult> {
+  const { supabase, user } = await session();
+  if (!user) return { ok: false, error: 'Session expirée : reconnectez-vous.' };
+  if (prix !== null && !(Number.isInteger(prix) && prix >= 1000 && prix <= 50_000_000)) {
+    return { ok: false, error: 'Indiquez un prix net vendeur en euros.' };
+  }
+  const { data, error } = await supabase.from('bien_analyses').select('details, bien_id').eq('id', analyseId).single();
+  if (error || !data) return { ok: false, error: 'Estimation introuvable.' };
+  const { error: upError } = await supabase
+    .from('bien_analyses')
+    .update({ details: { ...(data.details as EstimationDetails), prixRetenu: prix } })
+    .eq('id', analyseId);
+  if (upError) return { ok: false, error: 'Le prix n’a pas pu être enregistré.' };
+  revalidatePath('/dashboard/biens');
+  revalidatePath(`/dashboard/biens/${data.bien_id}`);
+  return { ok: true };
+}
+
 export async function marquerPointVerifie(analyseId: string, index: number, traite: boolean): Promise<ActionResult> {
   const { supabase, user } = await session();
   if (!user) return { ok: false, error: 'Session expirée : reconnectez-vous.' };

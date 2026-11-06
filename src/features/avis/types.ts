@@ -197,20 +197,14 @@ export type InfosAnnonce = {
 const nbFr = (n: number, d = 0) =>
   n.toLocaleString('fr-FR', { maximumFractionDigits: d }).replace(/[\u202f\u2009]/g, '\u00a0');
 
-/** Mentions obligatoires d'une annonce de vente (prix et honoraires, DPE, copropriété, Géorisques). */
+/** Mentions de l'annonce (prix net vendeur, DPE, copropriété, Géorisques). */
 export function mentionsAnnonce(
   annonce: Annonce,
   prix: AvisDetails['prix'],
   infos: InfosAnnonce
 ): string[] {
-  const hono = Math.round(prix.conseille * prix.tauxHonoraires);
-  const net = prix.conseille - hono;
   const lignes: string[] = [];
-  lignes.push(
-    annonce.honoraires === 'acquereur'
-      ? `Prix : ${nbFr(prix.conseille)}\u00a0€ honoraires inclus, dont ${nbFr((hono / net) * 100, 2)}\u00a0% TTC à la charge de l’acquéreur, soit ${nbFr(net)}\u00a0€ hors honoraires.`
-      : `Prix : ${nbFr(prix.conseille)}\u00a0€, honoraires à la charge du vendeur.`
-  );
+  lignes.push(`Prix : ${nbFr(prix.conseille)}\u00a0€ net vendeur.`);
   if (infos.dpe) {
     let dpe = `Classe énergie ${infos.dpe}, classe climat ${infos.ges ?? 'non communiquée'}.`;
     if (annonce.depensesEnergie.trim())

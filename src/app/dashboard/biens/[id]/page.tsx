@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { prixNetVendeur } from '@/lib/estimation/prix';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
@@ -108,8 +109,8 @@ export default async function BienPage({ params }: Props) {
         <FinancementPanel
           key={`fin-${estimation?.id ?? 'aucune'}`}
           parametres={parametresCredit}
-          prixInitial={estimation?.details.resultat.prixConseille ?? (bien.prix_affiche ?? bien.prix_bien ?? null)}
-          prixSource={estimation ? 'prix conseillé de l’estimation' : bien.prix_affiche || bien.prix_bien ? 'prix de la fiche' : 'à saisir'}
+          prixInitial={estimation ? prixNetVendeur(estimation.details) : (bien.prix_affiche ?? bien.prix_bien ?? null)}
+          prixSource={estimation ? 'prix net vendeur de l’estimation' : bien.prix_affiche || bien.prix_bien ? 'prix de la fiche' : 'à saisir'}
           anneeConstruction={bien.annee_construction}
         />
       </div>

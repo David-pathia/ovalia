@@ -22,11 +22,14 @@ classif_projet `court_terme | moyen_terme | long_terme`. Champs Laforêt non mod
 
 ## Estimation (src/lib/estimation)
 - `dvf.ts` (serveur) : Base Adresse Nationale → commune INSEE, communes à < 8 km (geo.api.gouv.fr),
-  ventes DVF géolocalisées (files.data.gouv.fr/geo-dvf, CSV par commune et par année, cache 1 semaine).
+  ventes DVF géolocalisées (files.data.gouv.fr/geo-dvf, CSV par commune et par année, cache 1 semaine) ; l'estimation
+  ne retient que les ventes des 3 dernières années.
   Seules les ventes d'un seul logement (+ dépendances) sont gardées.
 - `calcul.ts` (pur) : comparables par paliers (surface, pièces, terrain, rayon), indexation selon la tendance
   du secteur, médiane et quartiles pondérés (récence × similarité × distance), fourchette ±12 % max,
-  ajustements qualitatifs (±30 % total), prix conseillé FAI avec 12,5 % d'honoraires (`TAUX_HONORAIRES`).
+  ajustements qualitatifs (±30 % total), prix conseillé arrondi. **Tout est en net vendeur : aucun honoraire** (demande Julien).
+- Prix net vendeur retenu : `details.prixRetenu` (saisi dans le panneau d'estimation ou dans l'avis, gardé à la relance) ;
+  lire le prix avec `prixNetVendeur()` / `fourchetteNetVendeur()` (`src/lib/estimation/prix.ts`).
 - `estimer.ts` : orchestre et demande à Claude les ajustements chiffrés + argumentaire + stratégie ;
   le prix ne vient jamais du modèle. Résultat dans `bien_analyses` (valeur_probable non nulle = estimation,
   nulle = lecture de la saisie rapide). Lancée en arrière-plan (`after`) après saisie / 1re mise à jour.
@@ -56,7 +59,7 @@ classif_projet `court_terme | moyen_terme | long_terme`. Champs Laforêt non mod
   (ne rien ajouter sans source publique datée). Photos de l'équipe : `assets/equipe/`.
 - Cadastre : `parcelleAuPoint` (API Carto IGN) + WMS ortho et Parcellaire Express, contour de la parcelle surligné.
 - Synthèse IA (`src/lib/ai/synthese.ts`) : points forts, vigilance, cible acquéreur ; produite avec l'estimation (`details.synthese`)
-  ou depuis l'éditeur (`redigerSynthese`). Comparables DVF sur 3 ans, 5 ans si moins de 8 ventes (`details.periodeAns`).
+  ou depuis l'éditeur (`redigerSynthese`). Comparables DVF sur 3 ans uniquement.
 - Retouche photo dans l'éditeur (« Améliorer ») : niveaux, contraste, couleurs, verts ravivés, côté navigateur ; jamais
   de retouche générative (le bien ne doit pas être modifié). L'originale est conservée.
 - Nombres : remplacer l'espace fine U+202F (absente de la police) ; préciser `lineHeight` sur les textes > 10 pt.

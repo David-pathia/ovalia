@@ -1,9 +1,8 @@
 import { distanceKm, type Point, type Vente } from './geo';
 
 // Calcul déterministe à partir des ventes DVF : comparables, indexation dans le temps,
-// prix au m² médian pondéré, fourchette, puis ajustements qualitatifs et honoraires.
+// prix au m² médian pondéré, fourchette, puis ajustements qualitatifs. Tous les prix sont nets vendeur.
 
-export const TAUX_HONORAIRES = 0.125; // part des honoraires dans le prix affiché (Laforêt Roanne)
 
 export type BienEstime = {
   type: string;
@@ -39,7 +38,7 @@ export type Resultat = {
   valeurProbable: number;
   valeurHaute: number;
   prixM2: number;
-  prixConseille: number; // prix affiché, honoraires inclus
+  prixConseille: number; // prix net vendeur conseillé
   honoraires: number;
   netVendeur: number;
 };
@@ -227,7 +226,7 @@ export function calculerValeurs(surface: number, marche: Marche, ajustements: Aj
   const bas = Math.max(surface * marche.prixM2Bas * coef, valeurProbable * 0.88);
   const haut = Math.min(surface * marche.prixM2Haut * coef, valeurProbable * 1.12);
   const prixConseille = arrondi(valeurProbable, 1000);
-  const honoraires = arrondi(prixConseille * TAUX_HONORAIRES, 100);
+  const honoraires = 0; // l'avis ne parle que de net vendeur
   return {
     valeurBase: arrondi(valeurBase, 500),
     totalAjustements: Math.round(total * 1000) / 10,

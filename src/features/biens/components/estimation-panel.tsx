@@ -10,7 +10,7 @@ import { Icons } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import { calculerValeurs, type Ajustement } from '@/lib/estimation/calcul';
 import type { EstimationDetails } from '@/lib/estimation/estimer';
-import { modifierAjustements, relancerEstimation } from '../actions';
+import { fixerPrixNetVendeur, modifierAjustements, relancerEstimation } from '../actions';
 
 export type EstimationView = {
   id: string;
@@ -69,6 +69,48 @@ function Relancer({
         )}
       </Button>
       {disabledReason && <p className='text-muted-foreground text-xs'>{disabledReason}</p>}
+    </div>
+  );
+}
+
+/** Prix net vendeur saisi par le conseiller quand l'estimation ne lui convient pas. */
+function PrixRetenu({ analyseId, prixRetenu, prixEstime }: { analyseId: string; prixRetenu: number | null; prixEstime: number }) {
+  const router = useRouter();
+  const [valeur, setValeur] = useState(prixRetenu ? String(prixRetenu) : '');
+  const [pending, start] = useTransition();
+  const envoyer = (prix: number | null) =>
+    start(async () => {
+      const res = await fixerPrixNetVendeur(analyseId, prix);
+      if (res.ok) {
+        toast.success(prix === null ? 'Retour au prix estimé' : 'Prix net vendeur enregistré');
+        if (prix === null) setValeur('');
+        router.refresh();
+      } else toast.error(res.error);
+    });
+  const saisi = Number(valeur.replace(/\s/g, ''));
+  return (
+    <div className='mt-4 border-t pt-3'>
+      <label htmlFor='prix-retenu' className='text-muted-foreground text-xs'>
+        L’estimation ne vous convient pas ? Votre prix net vendeur
+      </label>
+      <div className='mt-1.5 flex flex-wrap gap-2'>
+        <Input
+          id='prix-retenu'
+          inputMode='numeric'
+          placeholder={num.format(prixEstime)}
+          className='w-36 font-mono tabular-nums'
+          value={valeur}
+          onChange={(e) => setValeur(e.target.value)}
+        />
+        <Button size='sm' disabled={pending || !(saisi >= 1000) || saisi === prixRetenu} onClick={() => envoyer(Math.round(saisi))}>
+          {pending ? <Icons.spinner className='animate-spin' /> : <Icons.check />} Retenir ce prix
+        </Button>
+        {prixRetenu !== null && (
+          <Button size='sm' variant='ghost' disabled={pending} onClick={() => envoyer(null)}>
+            Revenir à l’estimation
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
@@ -152,21 +194,15 @@ export function EstimationPanel({
 
       <div className='grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]'>
         <div className='bg-background/40 rounded-xl border p-4'>
-          <p className='text-muted-foreground text-xs'>Prix de présentation conseillé (honoraires inclus)</p>
+          <p className='text-muted-foreground text-xs'>{d.prixRetenu ? 'Prix net vendeur retenu par vous' : 'Prix net vendeur estimé'}</p>
           <p className='font-display text-cuivre mt-1 text-4xl leading-none font-extrabold tabular-nums'>
-            {eur.format(r.prixConseille)}
+            {eur.format(d.prixRetenu ?? r.prixConseille)}
           </p>
-          <dl className='mt-3 grid grid-cols-2 gap-2 text-sm'>
-            <div>
-              <dt className='text-muted-foreground text-xs'>Net vendeur</dt>
-              <dd className='font-mono'>{eur.format(r.netVendeur)}</dd>
-            </div>
-            <div>
-              <dt className='text-muted-foreground text-xs'>Honoraires {(d.tauxHonoraires * 100).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} %</dt>
-              <dd className='font-mono'>{eur.format(r.honoraires)}</dd>
-            </div>
-          </dl>
+          {d.prixRetenu ? (
+            <p className='text-muted-foreground mt-2 text-xs tabular-nums'>Estimation DVF : {eur.format(r.prixConseille)} net vendeur</p>
+          ) : null}
           {dirty && <p className='text-cuivre mt-2 text-xs'>Aperçu avec vos ajustements, pas encore enregistré.</p>}
+          <PrixRetenu key={d.prixRetenu ?? 'estime'} analyseId={estimation.id} prixRetenu={d.prixRetenu ?? null} prixEstime={r.prixConseille} />
         </div>
 
         <div className='rounded-xl border p-4'>

@@ -1,6 +1,7 @@
 import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { EstimationDetails } from '@/lib/estimation/estimer';
+import { fourchetteNetVendeur, prixNetVendeur } from '@/lib/estimation/prix';
 import { TYPES_BIEN, libelle } from '@/lib/biens/options';
 import {
   AGENCE_DEFAUT,
@@ -172,7 +173,7 @@ export function avisParDefaut(
 ): AvisDetails | null {
   const { estimation, vendeur, avis, photos } = donnees;
   if (!estimation) return null;
-  const r = estimation.details.resultat;
+  const fourchette = fourchetteNetVendeur(estimation.details);
   const tri = [...estimation.details.comparables].sort((a, b) => b.poids - a.poids);
   const neuf: AvisDetails = {
     version: 1,
@@ -188,10 +189,10 @@ export function avisParDefaut(
       precedentConseiller?.accroche !== undefined ? precedentConseiller : CONSEILLER_DEFAUT,
     agence: { ...AGENCE_DEFAUT, ...precedentAgence },
     prix: {
-      basse: arrondiPrix(r.valeurBasse),
-      haute: arrondiPrix(r.valeurHaute),
-      conseille: r.prixConseille,
-      tauxHonoraires: estimation.details.tauxHonoraires
+      basse: arrondiPrix(fourchette.basse),
+      haute: arrondiPrix(fourchette.haute),
+      conseille: prixNetVendeur(estimation.details),
+      tauxHonoraires: 0
     },
     textes: {
       introduction:
@@ -226,6 +227,11 @@ export function avisParDefaut(
         ? avis.details.analyse
         : neuf.analyse
   };
+  // Un seul prix net vendeur par bien : celui de l'estimation (estimé ou retenu par le conseiller), sans honoraires.
+  garde.prix = { ...garde.prix, conseille: prixNetVendeur(estimation.details), tauxHonoraires: 0 };
+  if (garde.prix.conseille < garde.prix.basse || garde.prix.conseille > garde.prix.haute) {
+    garde.prix = { ...garde.prix, basse: neuf.prix.basse, haute: neuf.prix.haute };
+  }
   if (garde.estimationId === estimation.id) return garde;
   return {
     ...garde,
