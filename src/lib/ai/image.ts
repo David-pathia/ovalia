@@ -60,6 +60,12 @@ export async function retoucherPhotoIA(
     if (!res.ok) {
       const detail = await res.text().catch(() => '');
       console.error('retouche.ia', res.status, detail.slice(0, 500));
+      if (/free tier|RestrictedModels/i.test(detail))
+        return {
+          ok: false,
+          error:
+            'Le crédit gratuit AI Gateway ne couvre pas la retouche d’image : ajoutez du crédit payant (Vercel → AI Gateway → Buy Paid Credit).'
+        };
       if (res.status === 401 || res.status === 403)
         return { ok: false, error: 'Clé AI Gateway refusée : vérifiez AI_GATEWAY_API_KEY.' };
       if (res.status === 402)
