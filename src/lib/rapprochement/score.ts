@@ -3,8 +3,6 @@
 
 import { distanceKm, type Point } from '@/lib/estimation/geo';
 
-/** Honoraires ajoutés au net vendeur pour comparer au budget « frais d'agence inclus » des acquéreurs. */
-export const HONORAIRES_RAPPROCHEMENT = 0.125;
 /** Fourchette de prix retenue autour du budget acquéreur (FAI) : de −15 % à +5 % ; en dehors, le bien est écarté. */
 export const TOLERANCE_BUDGET = { dessous: 0.15, dessus: 0.05 };
 export const SCORE_MIN = 50;
@@ -37,7 +35,9 @@ export type BienRapprochement = {
   id: string;
   type: string;
   prixFai: number | null;
-  prixSource: 'affiche' | 'estimation' | null;
+  prixSource: 'affiche' | 'fiche' | 'bareme' | null;
+  /** Explication du prix FAI comparé au budget (prix affiché, ou net vendeur + honoraires). */
+  prixDetail: string | null;
   chambres: number | null;
   surface: number | null;
   terrain: number | null;

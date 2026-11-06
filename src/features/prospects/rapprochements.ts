@@ -1,8 +1,8 @@
 import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { EstimationDetails } from '@/lib/estimation/estimer';
+import { honorairesBareme } from '@/lib/rapprochement/honoraires';
 import {
-  HONORAIRES_RAPPROCHEMENT,
   SCORE_MIN,
   scoreRapprochement,
   type BienRapprochement,
@@ -30,6 +30,29 @@ function versBien(
   const exterieurs = ((b.exterieurs as string[] | null) ?? []).map((x) => x.toLowerCase());
   const net = estimation ? (estimation.prixRetenu ?? estimation.resultat.prixConseille) : null;
   const affiche = b.prix_affiche ? Number(b.prix_affiche) : null;
+  // Prix FAI comparé au budget : prix affiché, sinon net vendeur + honoraires de la fiche, sinon net + barème Laforêt.
+  const honoFiche = Number(b.hono_vendeur ?? 0) + Number(b.hono_acquereur ?? 0);
+  const bareme = net ? honorairesBareme(net) : null;
+  const eurs = (n: number) => `${Math.round(n).toLocaleString('fr-FR')} €`;
+  const prix = affiche
+    ? {
+        fai: affiche,
+        source: 'affiche' as const,
+        detail: `prix affiché de la fiche : ${eurs(affiche)} FAI`
+      }
+    : net && honoFiche > 0
+      ? {
+          fai: net + honoFiche,
+          source: 'fiche' as const,
+          detail: `${eurs(net + honoFiche)} FAI = ${eurs(net)} net vendeur + ${eurs(honoFiche)} d’honoraires (fiche)`
+        }
+      : net && bareme
+        ? {
+            fai: net + bareme.montant,
+            source: 'bareme' as const,
+            detail: `${eurs(net + bareme.montant)} FAI = ${eurs(net)} net vendeur + ${eurs(bareme.montant)} d’honoraires (barème, ${bareme.libelle})`
+          }
+        : null;
   const terrain =
     b.surface_terrain === null || b.surface_terrain === undefined
       ? null
@@ -47,8 +70,9 @@ function versBien(
   return {
     id: b.id as string,
     type: b.type as string,
-    prixFai: affiche ?? (net ? Math.round(net * (1 + HONORAIRES_RAPPROCHEMENT)) : null),
-    prixSource: affiche ? 'affiche' : net ? 'estimation' : null,
+    prixFai: prix?.fai ?? null,
+    prixSource: prix?.source ?? null,
+    prixDetail: prix?.detail ?? null,
     chambres: b.chambres === null || b.chambres === undefined ? null : Number(b.chambres),
     surface: b.surface === null || b.surface === undefined ? null : Number(b.surface),
     terrain,
@@ -136,7 +160,9 @@ export async function recalculerRapprochements(
         bien_id: bien.id,
         projet_id: projet.id,
         score: r.score,
-        details: r.details,
+        details: bien.prixDetail
+          ? [{ critere: 'Prix', etat: 'inconnu', texte: bien.prixDetail }, ...r.details]
+          : r.details,
         prix_compare: bien.prixFai,
         explication: r.details
           .filter((d) => d.etat === 'ok')

@@ -81,7 +81,8 @@ classif_projet `court_terme | moyen_terme | long_terme`. Champs Laforêt non mod
   communes résolues via geo.api.gouv.fr. Absents du fichier → archivés (jamais supprimés).
 - Contacts / projets importés : `source = 'tableau_pilotage'`, `synchro_laforet = false` (le trigger de la file Laforêt les ignore).
   Migration `20261106120000_prospects_rapprochements.sql`. Ne jamais committer le fichier ni des données de prospects.
-- Score (`score.ts`, pur) : type, budget FAI (prix affiché, sinon net vendeur + 12,5 %), fourchette −15 % / +5 % du budget (en dehors : écarté),
+- Score (`score.ts`, pur) : type, budget FAI (prix affiché, sinon net vendeur + honoraires de la fiche, sinon + barème Laforêt
+  `honoraires.ts` appliqué au net : 6 000 / 7 500 / 9 000 € jusqu'à 60 / 100 / 150 k€, puis 6 %), fourchette −15 % / +5 % du budget (en dehors : écarté),
   secteur (communes ou zone en km), chambres et surface minimales, critères de confort. Rapprochements ≥ 50 enregistrés ;
   statut du conseiller conservé. Recalcul : après import, estimation, modification d'un bien, bouton « Recalculer ».
 
