@@ -140,7 +140,7 @@ export default async function BienPage({ params }: Props) {
           </h2>
           <p className='text-muted-foreground mt-1 mb-3 text-xs'>
             Prospects du tableau de pilotage dont la recherche correspond à ce bien. Budget comparé frais d’agence inclus (prix affiché, ou net vendeur
-            + 12,5 %), tolérance de 10 %.
+            + 12,5 %), prix retenu entre −15 % et +5 % du budget.
           </p>
           <RapprochementsListe rapprochements={rapprochements} vide='Aucun acquéreur correspondant pour le moment. Importez le tableau de pilotage depuis la page Prospects.' />
         </section>

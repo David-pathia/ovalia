@@ -25,7 +25,7 @@ export default async function RapprochementsPage() {
           <h1 className='font-display text-3xl font-extrabold'>Rapprochements</h1>
           <p className='text-muted-foreground mt-1 text-sm'>
             {tous.length} correspondance(s) bien ↔ acquéreur, budget comparé frais d’agence inclus
-            (tolérance de 10 %). ·{' '}
+            (prix retenu entre −15 % et +5 % du budget). ·{' '}
             <Link href='/dashboard/prospects' className='underline underline-offset-4'>
               prospects
             </Link>

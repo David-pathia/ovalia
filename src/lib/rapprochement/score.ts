@@ -5,8 +5,8 @@ import { distanceKm, type Point } from '@/lib/estimation/geo';
 
 /** Honoraires ajoutés au net vendeur pour comparer au budget « frais d'agence inclus » des acquéreurs. */
 export const HONORAIRES_RAPPROCHEMENT = 0.125;
-/** Dépassement de budget accepté (5 %) puis toléré (10 %) : au-delà, le bien est écarté. */
-export const TOLERANCE_BUDGET = { acceptee: 0.05, maximale: 0.1 };
+/** Fourchette de prix retenue autour du budget acquéreur (FAI) : de −15 % à +5 % ; en dehors, le bien est écarté. */
+export const TOLERANCE_BUDGET = { dessous: 0.15, dessus: 0.05 };
 export const SCORE_MIN = 50;
 
 export type CriteresProjet = {
@@ -66,32 +66,29 @@ export function scoreRapprochement(
   // Type de bien : bloquant.
   if (projet.types.length && !projet.types.includes(bien.type)) return null;
 
-  // Budget FAI : bloquant au-delà de +10 %.
+  // Budget FAI : prix du bien entre −15 % et +5 % du budget (la borne basse de l'acquéreur est gardée si elle est plus basse).
   if (projet.budgetMax && bien.prixFai) {
+    const plancher = Math.min(
+      projet.budgetMax * (1 - TOLERANCE_BUDGET.dessous),
+      projet.budgetMin ?? Infinity
+    );
+    const plafond = projet.budgetMax * (1 + TOLERANCE_BUDGET.dessus);
+    if (bien.prixFai > plafond || bien.prixFai < plancher) return null;
     const ecart = bien.prixFai / projet.budgetMax - 1;
-    if (ecart > TOLERANCE_BUDGET.maximale) return null;
     if (ecart <= 0)
       details.push({
         critere: 'Budget',
         etat: 'ok',
         texte: `${fmt(bien.prixFai)} pour ${fmt(projet.budgetMax)} max.`
       });
-    else if (ecart <= TOLERANCE_BUDGET.acceptee) {
+    else {
       score -= 5;
       details.push({
         critere: 'Budget',
         etat: 'partiel',
         texte: `${fmt(bien.prixFai)}, +${Math.round(ecart * 100)} % sur son budget`
       });
-    } else {
-      score -= 15;
-      details.push({
-        critere: 'Budget',
-        etat: 'partiel',
-        texte: `${fmt(bien.prixFai)}, +${Math.round(ecart * 100)} % : à négocier`
-      });
     }
-    if (projet.budgetMin && bien.prixFai < projet.budgetMin * 0.8) score -= 5;
   } else
     details.push({
       critere: 'Budget',
