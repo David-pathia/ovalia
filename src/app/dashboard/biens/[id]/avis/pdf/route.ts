@@ -12,7 +12,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.redirect(new URL('/connexion', _req.url));
 
-  const res = await genererAvisPdf(supabase, id);
+  let res: Awaited<ReturnType<typeof genererAvisPdf>>;
+  try {
+    res = await genererAvisPdf(supabase, id);
+  } catch (error) {
+    console.error('avis.pdf', error);
+    res = { ok: false, error: 'Le PDF n’a pas pu être généré. Réessayez ; si le problème persiste, signalez-le avec le nom du bien.' };
+  }
   if (!res.ok) return new NextResponse(res.error, { status: 400, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
   return new NextResponse(new Uint8Array(res.pdf), {
     headers: {

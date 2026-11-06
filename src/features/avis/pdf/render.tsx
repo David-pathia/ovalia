@@ -6,7 +6,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { analyseMarche } from '@/features/marche/core';
 import { lireParametresCredit } from '@/features/credit/data';
 import { simuler, tauxPourDuree, usurePourDuree } from '@/lib/credit';
-import { chargerBienPourAvis, infosAnnonce } from '../data';
+import { avisParDefaut, chargerBienPourAvis, infosAnnonce } from '../data';
 import { cleComparable, type AvisDetails } from '../types';
 import {
   COUCHE_ORTHO_CADASTRE,
@@ -97,7 +97,8 @@ export async function genererAvisPdf(
   const donnees = await chargerBienPourAvis(supabase, bienId);
   if (!donnees) return { ok: false, error: 'Bien introuvable.' };
   const { bien, pieces, estimation, photos } = donnees;
-  const avis: AvisDetails | undefined = donnees.avis?.details;
+  // Avis relu et complété comme dans l'éditeur : un avis enregistré avant une évolution du dossier reçoit les nouveaux champs.
+  const avis: AvisDetails | null | undefined = donnees.avis ? avisParDefaut(donnees) : undefined;
   if (!estimation) return { ok: false, error: 'Lancez d’abord l’estimation du bien.' };
   if (!avis) return { ok: false, error: 'Enregistrez d’abord l’avis de valeur.' };
 

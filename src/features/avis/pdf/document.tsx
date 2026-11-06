@@ -273,6 +273,8 @@ function pagesActives(d: AvisPdfData) {
     ([k]) =>
       d.avis.pages[k] !== false &&
       (k !== 'comparables' || d.comparables.length > 0) &&
+      (k !== 'positionnement' ||
+        (d.estimation.distributionM2?.length ?? d.estimation.comparables.length) >= 3) &&
       (k !== 'cadastre' || Boolean(d.cadastre?.carte)) &&
       (k !== 'annonce' || annonceVisible(d)) &&
       (k !== 'equipe' || d.equipe.length > 0)
