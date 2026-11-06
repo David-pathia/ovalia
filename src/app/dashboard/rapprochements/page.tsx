@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { chargerRapprochements } from '@/features/prospects/data';
 import {
-  RapprochementsListe,
+  RapprochementsParBien,
   type RapprochementVue
 } from '@/features/prospects/components/rapprochements-liste';
 import { BoutonRecalculer } from '@/features/prospects/components/bouton-recalculer';
@@ -38,23 +38,9 @@ export default async function RapprochementsPage() {
           Aucun rapprochement : importez le tableau de pilotage depuis la page Prospects.
         </p>
       ) : (
-        groupes.map((g) => (
-          <section key={g[0]!.bien!.id} className='bg-card rounded-2xl border p-4 sm:p-5'>
-            <h2 className='font-display mb-3 text-[17px] font-semibold'>
-              <Link href={`/dashboard/biens/${g[0]!.bien!.id}`} className='hover:underline'>
-                {g[0]!.bien!.titre}
-                {g[0]!.bien!.ville ? ` · ${g[0]!.bien!.ville}` : ''}
-              </Link>
-              <span className='text-muted-foreground ml-2 text-sm font-normal'>
-                {g.length} acquéreur(s) potentiel(s)
-              </span>
-            </h2>
-            <RapprochementsListe
-              rapprochements={g.map((r) => ({ ...r, bien: undefined }))}
-              vide=''
-            />
-          </section>
-        ))
+        <RapprochementsParBien
+          groupes={groupes.map((g) => ({ bien: g[0]!.bien!, rapprochements: g }))}
+        />
       )}
     </div>
   );

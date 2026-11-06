@@ -269,16 +269,14 @@ export async function appliquerImport(
           .update({ ...i.projet, actif: true })
           .eq('id', i.projetId);
       else
-        await supabase
-          .from('projets')
-          .insert({
-            ...i.projet,
-            contact_id: i.contactId,
-            nature: 'recherche',
-            transaction: 'achat',
-            titre: 'Tableau de pilotage',
-            synchro_laforet: false
-          });
+        await supabase.from('projets').insert({
+          ...i.projet,
+          contact_id: i.contactId,
+          nature: 'recherche',
+          transaction: 'achat',
+          titre: 'Tableau de pilotage',
+          synchro_laforet: false
+        });
     } else if (i.projetId)
       await supabase.from('projets').update({ actif: true }).eq('id', i.projetId);
   }
