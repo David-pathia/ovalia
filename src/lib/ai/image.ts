@@ -1,9 +1,10 @@
 import 'server-only';
 
-// Retouche « pro immobilier » d'une photo par un modèle d'édition d'image, via Vercel AI Gateway (API compatible OpenAI).
+// Retouche « pro immobilier » d'une photo par un modèle multimodal (Gemini Flash Image), via Vercel AI Gateway :
+// API Chat Completions avec la photo jointe et `modalities: ['image', 'text']`, image renvoyée dans `message.images`.
 // Consignes strictes de fidélité : lumière, ciel, pelouse existante et petits objets mobiles uniquement.
 
-const MODELE_RETOUCHE = 'google/gemini-3.1-flash-image';
+const MODELE_RETOUCHE = 'google/gemini-3.1-flash-image-preview';
 const GATEWAY = 'https://ai-gateway.vercel.sh/v1';
 
 const CONSIGNES = `Professional real-estate photo retouching. The result must remain a faithful, honest photograph of the SAME property.
@@ -35,14 +36,25 @@ export async function retoucherPhotoIA(
       error: 'Retouche IA non configurée : ajoutez la variable AI_GATEWAY_API_KEY sur Vercel.'
     };
   try {
-    const res = await fetch(`${GATEWAY}/images/edits`, {
+    const res = await fetch(`${GATEWAY}/chat/completions`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${cle}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: MODELE_RETOUCHE,
-        prompt: CONSIGNES,
-        images: [{ image_url: `data:${type};base64,${image.toString('base64')}` }],
-        n: 1
+        modalities: ['image', 'text'],
+        stream: false,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: `${CONSIGNES}\nReturn only the retouched image.` },
+              {
+                type: 'image_url',
+                image_url: { url: `data:${type};base64,${image.toString('base64')}` }
+              }
+            ]
+          }
+        ]
       })
     });
     if (!res.ok) {
@@ -52,11 +64,26 @@ export async function retoucherPhotoIA(
         return { ok: false, error: 'Clé AI Gateway refusée : vérifiez AI_GATEWAY_API_KEY.' };
       if (res.status === 402)
         return { ok: false, error: 'Crédits AI Gateway épuisés : rechargez-les sur Vercel.' };
+      if (res.status === 429)
+        return {
+          ok: false,
+          error:
+            'Limite du crédit gratuit atteinte : réessayez plus tard ou ajoutez du crédit AI Gateway.'
+        };
       return { ok: false, error: 'Le service de retouche n’a pas répondu. Réessayez.' };
     }
-    const json = (await res.json()) as { data?: { b64_json?: string }[] };
-    const b64 = json.data?.[0]?.b64_json;
-    if (!b64) return { ok: false, error: 'Aucune image renvoyée par le service de retouche.' };
+    const json = (await res.json()) as {
+      choices?: { message?: { images?: { image_url?: { url?: string } }[]; content?: string } }[];
+    };
+    const url = json.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    const b64 = url?.startsWith('data:') ? url.slice(url.indexOf(',') + 1) : undefined;
+    if (!b64) {
+      console.error(
+        'retouche.ia sans image',
+        String(json.choices?.[0]?.message?.content ?? '').slice(0, 300)
+      );
+      return { ok: false, error: 'Le modèle n’a pas renvoyé d’image : réessayez.' };
+    }
     const data = Buffer.from(b64, 'base64');
     // Détection simple du format renvoyé (PNG ou JPEG).
     const png = data[0] === 0x89 && data[1] === 0x50;
