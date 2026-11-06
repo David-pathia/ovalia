@@ -3,10 +3,12 @@ import { z } from 'zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { MODEL, anthropicConfigured, demanderTexte, extraireJson } from '@/lib/ai/client';
 import { genererAnnonce, type AnnonceIA } from '@/lib/ai/annonce';
+import { genererSynthese, type SyntheseBien } from '@/lib/ai/synthese';
 import { communesProches, localiser, ventesDvf } from './dvf';
 import {
   TAUX_HONORAIRES,
   calculerValeurs,
+  moisDepuis,
   marcheSurSelection,
   selectionnerComparables,
   type Ajustement,
@@ -39,6 +41,10 @@ export type EstimationDetails = {
   ventesIds?: string[];
   strategie: string | null;
   iaErreur: string | null;
+  /** Points forts, points de vigilance et cible acquéreur (avis de valeur). */
+  synthese?: SyntheseBien | null;
+  /** Ancienneté maximale des ventes comparables (3 ans, 5 si le secteur manque de ventes). */
+  periodeAns?: number;
   /** Projet d'annonce (ton chaleureux) rédigé avec l'estimation, repris par l'avis de valeur. */
   annonce?: AnnonceIA | null;
 };
@@ -193,6 +199,7 @@ export async function estimerBien(
   };
   const manuelle = Boolean(options.ventesIds?.length);
   let selection;
+  let periodeAns = 5;
   if (manuelle) {
     const ids = new Set(options.ventesIds);
     // Les ventes choisies peuvent venir d'une commune plus éloignée que le rayon automatique.
@@ -208,7 +215,14 @@ export async function estimerBien(
     selection = marcheSurSelection(bienEstime, choisies, ventes, loc, loc.precision === 'adresse');
     if (!selection) return { ok: false, error: 'Choisissez au moins 3 ventes comparables.' };
   } else {
-    selection = selectionnerComparables(bienEstime, ventes, loc, loc.precision === 'adresse');
+    // Ventes des 3 dernières années en priorité ; 5 ans seulement si le secteur en compte trop peu.
+    const recentes = ventes.filter((v) => moisDepuis(v.date) <= 36);
+    const sur3ans = selectionnerComparables(bienEstime, recentes, loc, loc.precision === 'adresse');
+    if (sur3ans && sur3ans.comparables.length >= 8) {
+      selection = sur3ans;
+      periodeAns = 3;
+    } else
+      selection = selectionnerComparables(bienEstime, ventes, loc, loc.precision === 'adresse');
     if (!selection) {
       return {
         ok: false,
@@ -266,7 +280,11 @@ export async function estimerBien(
   );
 
   // L'annonce ne dépend pas du marché : elle est rédigée en même temps que les ajustements.
-  const [ia, annonce] = await Promise.all([
+  const piecesIa = (pieces ?? []).map((p) => ({
+    nom: p.nom,
+    surface: p.surface === null ? null : Number(p.surface)
+  }));
+  const [ia, annonce, synthese] = await Promise.all([
     proposerAjustements(contexte),
     genererAnnonce(
       bien,
@@ -275,7 +293,8 @@ export async function estimerBien(
         surface: p.surface === null ? null : Number(p.surface),
         niveau: p.niveau
       }))
-    )
+    ),
+    genererSynthese(bien, piecesIa)
   ]);
   const ajustements: Ajustement[] = 'erreur' in ia ? [] : ia.ajustements;
   const resultat = calculerValeurs(surface, marche, ajustements);
@@ -302,7 +321,9 @@ export async function estimerBien(
     ventesIds: manuelle ? comparables.map((c) => c.id) : undefined,
     strategie: 'erreur' in ia ? null : ia.strategie,
     iaErreur: 'erreur' in ia ? (ia.erreur ?? null) : null,
-    annonce: annonce.ok ? annonce.annonce : null
+    annonce: annonce.ok ? annonce.annonce : null,
+    synthese: synthese.ok ? synthese.synthese : null,
+    periodeAns
   };
 
   const { data: analyse, error } = await supabase

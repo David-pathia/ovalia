@@ -8,8 +8,15 @@ import { lireParametresCredit } from '@/features/credit/data';
 import { simuler, tauxPourDuree, usurePourDuree } from '@/lib/credit';
 import { chargerBienPourAvis, infosAnnonce } from '../data';
 import { cleComparable, type AvisDetails } from '../types';
-import { carteStatique } from './carte';
-import { AvisDocument, type AvisPdfData, type ImagePdf } from './document';
+import {
+  COUCHE_ORTHO_CADASTRE,
+  COUCHE_PLAN_CADASTRE,
+  carteStatique,
+  parcelleAuPoint
+} from './carte';
+import { EQUIPE_TRANSACTION } from '../laforet';
+import { AvisDocument } from './document';
+import type { AvisPdfData, ImagePdf } from './base';
 
 async function telechargerImage(
   supabase: SupabaseClient,
@@ -45,6 +52,43 @@ async function photoConseiller(): Promise<ImagePdf | null> {
   }
 }
 
+const ASSETS = path.join(process.cwd(), 'src/features/avis/assets');
+
+async function lireImage(fichier: string): Promise<ImagePdf | null> {
+  try {
+    return { data: await readFile(path.join(ASSETS, fichier)), format: 'jpg' };
+  } catch {
+    return null;
+  }
+}
+
+/** Situation cadastrale : parcelle du bien sur photo aérienne, plus un plan de l'environnement. */
+async function cadastre(lat: number, lon: number): Promise<AvisPdfData['cadastre']> {
+  const parcelle = await parcelleAuPoint(lat, lon);
+  const polygones = parcelle?.contour.length ? [parcelle.contour] : [];
+  const reperes = parcelle ? [{ lat, lon }] : [{ lat, lon, principal: true }];
+  const [carte, environnement] = await Promise.all([
+    carteStatique(reperes, {
+      couches: COUCHE_ORTHO_CADASTRE,
+      polygones,
+      etendueMinM: 170,
+      margeM: 45,
+      largeur: 1600,
+      hauteur: 1000
+    }),
+    carteStatique([{ lat, lon, principal: true }], {
+      couches: COUCHE_PLAN_CADASTRE,
+      etendueMinM: 650,
+      margeM: 0,
+      largeur: 1000,
+      hauteur: 700
+    })
+  ]);
+  // Sans parcelle, le repère reste visible ; avec, le contour suffit.
+  if (carte && parcelle) carte.reperes = [];
+  return { carte, environnement, parcelle };
+}
+
 /** Construit toutes les données du dossier puis rend le PDF. */
 export async function genererAvisPdf(
   supabase: SupabaseClient,
@@ -65,79 +109,114 @@ export async function genererAvisPdf(
     : tri.slice(0, 8);
   const comparables = retenus.map((c, i) => ({ ...c, n: i + 1 }));
 
-  const [marche, pop, carteSecteur, carteComp, couverture, imagesBien, parametres] =
-    await Promise.all([
-      analyseMarche({
-        lieu: [bien.adresse, bien.code_postal, bien.ville].filter(Boolean).join(' ') || loc.commune,
-        rayonKm: Math.min(5, Math.max(1, Math.ceil(det.marche.rayonKm || 3))),
-        type: bien.type === 'appartement' ? 'appartement' : 'maison',
-        surfaceMin: null,
-        surfaceMax: null,
-        piecesMin: null,
-        piecesMax: null,
-        terrainMin: null,
-        terrainMax: null,
-        annees: 3
-      }).then((r) => (r.ok ? r.data : null)),
-      population(loc.codeInsee),
-      carteStatique([{ lat: loc.lat, lon: loc.lon, principal: true }], {
-        etendueMinM: 1800,
-        largeur: 1400,
-        hauteur: 560
-      }),
-      (async () => {
-        // Les estimations antérieures à l'avis de valeur ne gardaient pas les coordonnées des ventes : elles n'apparaissent pas sur la carte.
-        const points = comparables.filter(
-          (c) => typeof c.lat === 'number' && typeof c.lon === 'number'
-        );
-        return carteStatique(
-          [
-            { lat: loc.lat, lon: loc.lon, principal: true },
-            ...points.map((c) => ({
-              lat: c.lat as number,
-              lon: c.lon as number,
-              libelle: String(c.n)
-            }))
-          ],
-          { etendueMinM: 1500, largeur: 1400, hauteur: 700, margeM: 300 }
-        );
-      })(),
-      avis.photos.couverture ? photos.find((p) => p.id === avis.photos.couverture) : undefined,
-      Promise.all(
-        avis.photos.bien
-          .map((id) => photos.find((p) => p.id === id))
-          .filter((p): p is NonNullable<typeof p> => Boolean(p))
-          .map((p) => telechargerImage(supabase, p.path))
-      ),
-      lireParametresCredit()
-    ]);
+  const pointBien =
+    bien.latitude && bien.longitude
+      ? { lat: Number(bien.latitude), lon: Number(bien.longitude) }
+      : loc.precision === 'adresse'
+        ? { lat: loc.lat, lon: loc.lon }
+        : null;
+  const [
+    marche,
+    pop,
+    carteSecteur,
+    carteComp,
+    couverture,
+    imagesBien,
+    parametres,
+    cadastreBien,
+    equipe
+  ] = await Promise.all([
+    analyseMarche({
+      lieu: [bien.adresse, bien.code_postal, bien.ville].filter(Boolean).join(' ') || loc.commune,
+      rayonKm: Math.min(5, Math.max(1, Math.ceil(det.marche.rayonKm || 3))),
+      type: bien.type === 'appartement' ? 'appartement' : 'maison',
+      surfaceMin: null,
+      surfaceMax: null,
+      piecesMin: null,
+      piecesMax: null,
+      terrainMin: null,
+      terrainMax: null,
+      annees: 3
+    }).then((r) => (r.ok ? r.data : null)),
+    population(loc.codeInsee),
+    carteStatique([{ lat: loc.lat, lon: loc.lon, principal: true }], {
+      etendueMinM: 1800,
+      largeur: 1400,
+      hauteur: 560
+    }),
+    (async () => {
+      // Les estimations antérieures à l'avis de valeur ne gardaient pas les coordonnées des ventes : elles n'apparaissent pas sur la carte.
+      const points = comparables.filter(
+        (c) => typeof c.lat === 'number' && typeof c.lon === 'number'
+      );
+      return carteStatique(
+        [
+          { lat: loc.lat, lon: loc.lon, principal: true },
+          ...points.map((c) => ({
+            lat: c.lat as number,
+            lon: c.lon as number,
+            libelle: String(c.n)
+          }))
+        ],
+        { etendueMinM: 1500, largeur: 1400, hauteur: 700, margeM: 300 }
+      );
+    })(),
+    avis.photos.couverture ? photos.find((p) => p.id === avis.photos.couverture) : undefined,
+    Promise.all(
+      avis.photos.bien
+        .map((id) => photos.find((p) => p.id === id))
+        .filter((p): p is NonNullable<typeof p> => Boolean(p))
+        .map((p) => telechargerImage(supabase, p.path))
+    ),
+    lireParametresCredit(),
+    pointBien ? cadastre(pointBien.lat, pointBien.lon) : Promise.resolve(null),
+    Promise.all(
+      EQUIPE_TRANSACTION.map(async (m) => ({
+        prenom: m.prenom,
+        nom: m.nom,
+        role: m.role,
+        photo: await lireImage(`equipe/${m.photo}`)
+      }))
+    )
+  ]);
 
+  // Grille de financement : durées 15 / 20 / 25 ans × apport 0 %, 10 %, 20 % (frais de notaire inclus dans le besoin).
   let credit: AvisPdfData['credit'] = null;
   const notaire = Math.round((avis.prix.conseille * parametres.notaire_pct) / 100);
-  const apport = Math.round(((avis.prix.conseille + notaire) * parametres.apport_pct) / 100);
-  const capital = avis.prix.conseille + notaire - apport;
-  const simulations = [18, 20]
-    .map((annees) => {
-      const taux = tauxPourDuree(parametres, annees);
-      return taux === null
-        ? null
-        : simuler(
-            capital,
-            taux,
-            annees,
-            parametres.assurance_pct,
-            usurePourDuree(parametres, annees)
-          );
-    })
-    .filter((x): x is NonNullable<typeof x> => x !== null);
-  if (simulations.length)
+  const besoin = avis.prix.conseille + notaire;
+  const durees = [15, 20, 25];
+  const taux = durees.map((n) => tauxPourDuree(parametres, n));
+  if (taux.some((t) => t !== null)) {
     credit = {
-      simulations,
-      apport,
-      capital,
+      durees,
+      taux,
+      lignes: [0, 10, 20].map((apportPct) => {
+        const apport = Math.round((besoin * apportPct) / 100);
+        const capital = besoin - apport;
+        return {
+          apportPct,
+          apport,
+          capital,
+          sims: durees.map((n, i) =>
+            taux[i] === null
+              ? null
+              : simuler(
+                  capital,
+                  taux[i]!,
+                  n,
+                  parametres.assurance_pct,
+                  usurePourDuree(parametres, n)
+                )
+          )
+        };
+      }),
+      notaire,
+      notairePct: parametres.notaire_pct,
+      assurancePct: parametres.assurance_pct,
       source: parametres.source,
       date: parametres.taux_du
     };
+  }
 
   const data: AvisPdfData = {
     avis,
@@ -157,6 +236,8 @@ export async function genererAvisPdf(
       bien: imagesBien.filter((x): x is ImagePdf => x !== null)
     },
     credit,
+    cadastre: cadastreBien,
+    equipe,
     infos: infosAnnonce(bien),
     photoConseiller: await photoConseiller()
   };

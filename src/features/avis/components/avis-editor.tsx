@@ -13,11 +13,18 @@ import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
 import type { ComparableResume } from '@/lib/estimation/estimer';
 import { TONS_ANNONCE, type TonAnnonce } from '@/lib/ai/annonce-tons';
-import { ajouterPhoto, enregistrerAvis, redigerAnnonce, supprimerPhoto } from '../actions';
+import {
+  ajouterPhoto,
+  enregistrerAvis,
+  redigerAnnonce,
+  redigerSynthese,
+  supprimerPhoto
+} from '../actions';
 import {
   ETAPES_DEFAUT,
   MAX_COMPARABLES_AVIS,
   MAX_ETAPES,
+  PROFILS_ACQUEREUR,
   PAGES_AVIS,
   TITRE_ANNONCE_MAX,
   annonceEnTexte,
@@ -74,6 +81,57 @@ function Champ({
       </Label>
       {children}
     </div>
+  );
+}
+
+/**
+ * Retouche légère et fidèle : niveaux automatiques, contraste, couleurs un peu plus vives et verts ravivés (pelouse).
+ * Aucun élément n'est ajouté ni retiré de l'image.
+ */
+async function ameliorerPhoto(url: string): Promise<Blob> {
+  const image = await createImageBitmap(await (await fetch(url)).blob());
+  const echelle = Math.min(1, 2000 / Math.max(image.width, image.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(image.width * echelle);
+  canvas.height = Math.round(image.height * echelle);
+  const ctx = canvas.getContext('2d')!;
+  ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+  const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const px = img.data;
+  const hist: number[] = Array.from({ length: 256 }, () => 0);
+  for (let i = 0; i < px.length; i += 4)
+    hist[Math.round(0.299 * px[i]! + 0.587 * px[i + 1]! + 0.114 * px[i + 2]!)]!++;
+  const total = px.length / 4;
+  const centile = (q: number) => {
+    let cumul = 0;
+    for (let v = 0; v < 256; v++) if ((cumul += hist[v]!) >= total * q) return v;
+    return 255;
+  };
+  // Étirement limité pour ne pas brûler les blancs ni boucher les noirs.
+  const bas = Math.min(centile(0.005), 40);
+  const haut = Math.max(centile(0.995), 215);
+  const etire = 255 / Math.max(1, haut - bas);
+  for (let i = 0; i < px.length; i += 4) {
+    let r = (px[i]! - bas) * etire;
+    let g = (px[i + 1]! - bas) * etire;
+    let b = (px[i + 2]! - bas) * etire;
+    // Contraste doux autour du gris moyen.
+    r = 128 + (r - 128) * 1.06;
+    g = 128 + (g - 128) * 1.06;
+    b = 128 + (b - 128) * 1.06;
+    const gris = 0.299 * r + 0.587 * g + 0.114 * b;
+    const vert = g > r * 1.04 && g > b * 1.04;
+    const sat = vert ? 1.28 : 1.1;
+    r = gris + (r - gris) * sat;
+    g = gris + (g - gris) * sat * (vert ? 1.03 : 1);
+    b = gris + (b - gris) * sat;
+    px[i] = Math.max(0, Math.min(255, r));
+    px[i + 1] = Math.max(0, Math.min(255, g));
+    px[i + 2] = Math.max(0, Math.min(255, b));
+  }
+  ctx.putImageData(img, 0, 0);
+  return new Promise((ok, ko) =>
+    canvas.toBlob((b) => (b ? ok(b) : ko(new Error('conversion'))), 'image/jpeg', 0.9)
   );
 }
 
@@ -184,7 +242,15 @@ export function AvisEditor({
     // L'onglet est ouvert tout de suite (dans le clic) pour ne pas être bloqué par le navigateur.
     const onglet = puisPdf ? window.open('', '_blank') : null;
     startSave(async () => {
-      const res = await enregistrerAvis(bienId, avis);
+      const propre = (l: string[]) => l.map((x) => x.trim()).filter(Boolean);
+      const res = await enregistrerAvis(bienId, {
+        ...avis,
+        analyse: {
+          pointsForts: propre(avis.analyse.pointsForts),
+          vigilance: propre(avis.analyse.vigilance),
+          cibles: avis.analyse.cibles.filter((c) => c.profil.trim())
+        }
+      });
       if (!res.ok) {
         onglet?.close();
         setErreur(res.error);
@@ -237,6 +303,73 @@ export function AvisEditor({
       setEnvoi(false);
     }
   };
+
+  const [retouche, setRetouche] = useState<string | null>(null);
+  const ameliorer = async (photo: PhotoEditeur) => {
+    if (!photo.url) return;
+    setRetouche(photo.id);
+    const supabase = createClient();
+    try {
+      const blob = await ameliorerPhoto(photo.url);
+      const chemin = `${ownerId}/${bienId}/${crypto.randomUUID()}.jpg`;
+      const { error } = await supabase.storage
+        .from('biens')
+        .upload(chemin, blob, { contentType: 'image/jpeg' });
+      if (error) throw error;
+      const res = await ajouterPhoto(bienId, chemin);
+      if (!res.ok) throw new Error(res.error);
+      const { data } = await supabase.storage.from('biens').createSignedUrl(chemin, 3600);
+      setPhotos((p) => {
+        const i = p.findIndex((x) => x.id === photo.id);
+        const copie = [...p];
+        copie.splice(i + 1, 0, { id: res.id, url: data?.signedUrl ?? null });
+        return copie;
+      });
+      // La version retouchée remplace l'originale dans le dossier ; l'originale reste disponible.
+      setAvis((a) => ({
+        ...a,
+        photos: {
+          couverture: a.photos.couverture === photo.id ? res.id : a.photos.couverture,
+          bien: a.photos.bien.map((x) => (x === photo.id ? res.id : x))
+        }
+      }));
+      toast.success('Photo améliorée ajoutée : l’originale est conservée.');
+    } catch (e) {
+      console.error(e);
+      toast.error('La photo n’a pas pu être retouchée.');
+    } finally {
+      setRetouche(null);
+    }
+  };
+
+  const [syntheseEnCours, setSyntheseEnCours] = useState(false);
+  const redigerAnalyse = async () => {
+    const plein =
+      avis.analyse.pointsForts.length ||
+      avis.analyse.vigilance.length ||
+      avis.analyse.cibles.length;
+    if (
+      plein &&
+      !window.confirm(
+        'Remplacer les points forts, points de vigilance et la cible acquéreur actuels ?'
+      )
+    )
+      return;
+    setSyntheseEnCours(true);
+    try {
+      const res = await redigerSynthese(bienId);
+      if (!res.ok) return toast.error(res.error);
+      setAvis((a) => ({ ...a, analyse: res.synthese }));
+      toast.success('Synthèse rédigée : relisez-la avant d’enregistrer.');
+    } finally {
+      setSyntheseEnCours(false);
+    }
+  };
+  const lignes = (v: string) =>
+    v
+      .split('\n')
+      .map((x) => x.trim())
+      .filter(Boolean);
 
   const retirerPhoto = async (id: string) => {
     const res = await supprimerPhoto(id);
@@ -334,17 +467,9 @@ export function AvisEditor({
 
         <Bloc
           titre='Textes du dossier'
-          aide='Le texte « Notre regard sur votre bien » est repris de l’argumentaire de l’estimation : relisez-le avant envoi.'
+          aide='« Notre regard sur votre bien » (page « Le prix de marché ») reprend l’argumentaire de l’estimation : relisez-le avant envoi.'
         >
           <div className='space-y-3'>
-            <Champ id='a-intro' label='Introduction'>
-              <Textarea
-                id='a-intro'
-                rows={4}
-                value={avis.textes.introduction}
-                onChange={(e) => majObj('textes', 'introduction', e.target.value)}
-              />
-            </Champ>
             <Champ id='a-bien' label='Notre regard sur votre bien'>
               <Textarea
                 id='a-bien'
@@ -353,7 +478,10 @@ export function AvisEditor({
                 onChange={(e) => majObj('textes', 'bien', e.target.value)}
               />
             </Champ>
-            <Champ id='a-conclu' label='Conclusion (page « Notre estimation »)'>
+            <Champ
+              id='a-conclu'
+              label='Message de conclusion (dernière page « Notre avis de valeur »)'
+            >
               <Textarea
                 id='a-conclu'
                 rows={3}
@@ -365,8 +493,137 @@ export function AvisEditor({
         </Bloc>
 
         <Bloc
+          titre='Votre bien : points forts, vigilance et cible'
+          aide='Page « Votre bien » (points forts et points de vigilance) et page « Cible acquéreur et financement ». Une ligne par élément.'
+        >
+          <div className='mb-3 flex justify-end'>
+            <Button size='sm' onClick={redigerAnalyse} disabled={syntheseEnCours}>
+              {syntheseEnCours ? <Icons.spinner className='animate-spin' /> : <Icons.sparkles />}
+              {syntheseEnCours ? 'Rédaction…' : 'Rédiger avec l’IA'}
+            </Button>
+          </div>
+          <div className='grid gap-3 sm:grid-cols-2'>
+            <Champ id='an-forts' label='Points forts'>
+              <Textarea
+                id='an-forts'
+                rows={6}
+                value={avis.analyse.pointsForts.join('\n')}
+                onChange={(e) =>
+                  setAvis((a) => ({
+                    ...a,
+                    analyse: { ...a.analyse, pointsForts: e.target.value.split('\n') }
+                  }))
+                }
+                onBlur={(e) =>
+                  setAvis((a) => ({
+                    ...a,
+                    analyse: { ...a.analyse, pointsForts: lignes(e.target.value) }
+                  }))
+                }
+              />
+            </Champ>
+            <Champ id='an-vigilance' label='Points de vigilance'>
+              <Textarea
+                id='an-vigilance'
+                rows={6}
+                value={avis.analyse.vigilance.join('\n')}
+                onChange={(e) =>
+                  setAvis((a) => ({
+                    ...a,
+                    analyse: { ...a.analyse, vigilance: e.target.value.split('\n') }
+                  }))
+                }
+                onBlur={(e) =>
+                  setAvis((a) => ({
+                    ...a,
+                    analyse: { ...a.analyse, vigilance: lignes(e.target.value) }
+                  }))
+                }
+              />
+            </Champ>
+          </div>
+          <p className='text-muted-foreground mt-4 mb-1.5 text-xs'>
+            Cible acquéreur (profil et raison)
+          </p>
+          <div className='space-y-2'>
+            {avis.analyse.cibles.map((c, i) => (
+              <div key={i} className='flex gap-2'>
+                <Input
+                  aria-label={`Profil ${i + 1}`}
+                  className='w-44 shrink-0'
+                  list='profils-acquereur'
+                  value={c.profil}
+                  onChange={(e) =>
+                    setAvis((a) => ({
+                      ...a,
+                      analyse: {
+                        ...a.analyse,
+                        cibles: a.analyse.cibles.map((x, j) =>
+                          j === i ? { ...x, profil: e.target.value } : x
+                        )
+                      }
+                    }))
+                  }
+                />
+                <Input
+                  aria-label={`Raison ${i + 1}`}
+                  value={c.raison}
+                  onChange={(e) =>
+                    setAvis((a) => ({
+                      ...a,
+                      analyse: {
+                        ...a.analyse,
+                        cibles: a.analyse.cibles.map((x, j) =>
+                          j === i ? { ...x, raison: e.target.value } : x
+                        )
+                      }
+                    }))
+                  }
+                />
+                <Button
+                  size='icon'
+                  variant='ghost'
+                  aria-label={`Retirer le profil ${i + 1}`}
+                  onClick={() =>
+                    setAvis((a) => ({
+                      ...a,
+                      analyse: { ...a.analyse, cibles: a.analyse.cibles.filter((_, j) => j !== i) }
+                    }))
+                  }
+                >
+                  <Icons.trash />
+                </Button>
+              </div>
+            ))}
+            <datalist id='profils-acquereur'>
+              {PROFILS_ACQUEREUR.map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
+            </datalist>
+            <Button
+              size='sm'
+              variant='outline'
+              disabled={avis.analyse.cibles.length >= 4}
+              onClick={() =>
+                setAvis((a) => ({
+                  ...a,
+                  analyse: {
+                    ...a.analyse,
+                    cibles: [...a.analyse.cibles, { profil: '', raison: '' }]
+                  }
+                }))
+              }
+            >
+              <Icons.add /> Ajouter un profil
+            </Button>
+          </div>
+        </Bloc>
+
+        <Bloc
           titre='Votre annonce (projet)'
-          aide='Page placée juste après l’estimation : le vendeur découvre son bien tel qu’il sera présenté aux acquéreurs. Prix et mentions légales sont ajoutés automatiquement.'
+          aide='Avant-dernière page du dossier : le vendeur découvre son bien tel qu’il sera présenté aux acquéreurs. Prix et mentions légales sont ajoutés automatiquement.'
         >
           <div className='flex flex-wrap items-center gap-2'>
             <span className='text-muted-foreground text-xs'>Ton</span>
@@ -488,7 +745,7 @@ export function AvisEditor({
 
         <Bloc
           titre='Les prochaines étapes'
-          aide='Frise présentée après l’annonce : elle montre au vendeur comment se déroule la vente avec vous.'
+          aide='Frise en tête de la page « Votre accompagnement », au-dessus des 7 engagements de l’agence.'
         >
           <ol className='space-y-3'>
             {avis.etapes.map((e, i) => (
@@ -653,6 +910,20 @@ export function AvisEditor({
                       onClick={() => basculerPhotoBien(p.id)}
                     >
                       {dansBien ? 'Dans le dossier' : 'Ajouter'}
+                    </Button>
+                    <Button
+                      size='xs'
+                      variant='ghost'
+                      disabled={!p.url || retouche !== null}
+                      onClick={() => ameliorer(p)}
+                      title='Lumière, contraste et couleurs, sans modifier le contenu de la photo'
+                    >
+                      {retouche === p.id ? (
+                        <Icons.spinner className='animate-spin' />
+                      ) : (
+                        <Icons.sparkles />
+                      )}
+                      Améliorer
                     </Button>
                     <Button
                       size='icon-xs'
@@ -825,7 +1096,15 @@ export function AvisEditor({
                 ['telephone', 'Téléphone', ''],
                 ['email', 'E-mail', ''],
                 ['site', 'Site', 'col-span-2'],
-                ['horaires', 'Horaires', 'col-span-2']
+                ['horaires', 'Horaires', 'col-span-2'],
+                ['portails', 'Nombre de portails', ''],
+                ['reseauxSociaux', 'Réseaux sociaux', ''],
+                ['arbres', 'Engagement environnemental (modalités exactes)', 'col-span-2'],
+                [
+                  'avisClients',
+                  'Avis clients (ex. « 4,8/5 sur 120 avis Google »), vide = masqué',
+                  'col-span-2'
+                ]
               ] as const
             ).map(([k, l, cls]) => (
               <Champ key={k} id={`g-${k}`} label={l} className={cls}>

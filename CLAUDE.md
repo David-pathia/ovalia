@@ -48,6 +48,17 @@ classif_projet `court_terme | moyen_terme | long_terme`. Champs Laforêt non mod
   calculés par `mentionsAnnonce` (types.ts), jamais par le modèle. Puis la frise « Les prochaines étapes » (`etapes`, modifiables).
 - Couverture : photo du conseiller (`src/features/avis/assets/conseiller.jpg`, tracée par next.config) + nom, fonction,
   présentation (`conseiller.accroche`) et portable ; conseiller par défaut `CONSEILLER_DEFAUT`, puis repris du dernier avis.
+- Refonte (cahier des charges Julien, nov. 2026) : ordre des pages = `PAGES_AVIS` (types.ts), « Notre avis de valeur » clôt
+  toujours le dossier. `pdf/base.tsx` (charte, primitives), `pdf/document.tsx` (couverture, sommaire, secteur, comparables,
+  positionnement, ajustements, DPE, méthode, annonce), `pdf/pages-laforet.tsx` (réseau et agence, équipe, accompagnement,
+  Favoriz), `pdf/pages-bien.tsx` (bien synthétique, cadastre, stratégie de prix, DVF, assainissement, cible et financement,
+  avis final). Contenus Laforêt dans `laforet.ts` (repris de la plaquette officielle), statistiques sourcées dans `sources.ts`
+  (ne rien ajouter sans source publique datée). Photos de l'équipe : `assets/equipe/`.
+- Cadastre : `parcelleAuPoint` (API Carto IGN) + WMS ortho et Parcellaire Express, contour de la parcelle surligné.
+- Synthèse IA (`src/lib/ai/synthese.ts`) : points forts, vigilance, cible acquéreur ; produite avec l'estimation (`details.synthese`)
+  ou depuis l'éditeur (`redigerSynthese`). Comparables DVF sur 3 ans, 5 ans si moins de 8 ventes (`details.periodeAns`).
+- Retouche photo dans l'éditeur (« Améliorer ») : niveaux, contraste, couleurs, verts ravivés, côté navigateur ; jamais
+  de retouche générative (le bien ne doit pas être modifié). L'originale est conservée.
 - Nombres : remplacer l'espace fine U+202F (absente de la police) ; préciser `lineHeight` sur les textes > 10 pt.
 - Ne jamais committer de PDF ou de données de clients réels.
 

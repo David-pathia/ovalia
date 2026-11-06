@@ -14,6 +14,13 @@ export type Agence = {
   site: string;
   horaires: string;
   mentions: string;
+  /** Nombre de portails de diffusion (texte libre, ex. « 11 »). */
+  portails: string;
+  reseauxSociaux: string;
+  /** Engagement de plantation d'arbres : modalités exactes. */
+  arbres: string;
+  /** Avis clients : note, nombre d'avis, plateforme (vide = rubrique masquée). */
+  avisClients: string;
 };
 
 export type Conseiller = {
@@ -34,21 +41,23 @@ export const CONSEILLER_DEFAUT: Conseiller = {
     'Estimation gratuite et personnalisée sur le Roannais · Achat et vente · Confiance et proximité'
 };
 
+// Pages dans l'ordre du dossier ; « Notre avis de valeur » clôt toujours le dossier.
 export const PAGES_AVIS = [
-  ['secteur', 'Votre secteur et son marché'],
-  ['bien', 'Votre bien (fiche d’estimation et relevé)'],
-  ['comparables', 'Ventes comparables'],
-  ['positionnement', 'Positionnement sur le marché'],
-  ['ajustements', 'Ajustements de valeur'],
-  ['valeurVerte', 'Valeur verte (DPE)'],
-  ['financement', 'Financement acquéreur (18 et 20 ans)'],
-  ['annonce', 'Votre future annonce'],
-  ['etapes', 'Les prochaines étapes'],
-  ['methode', 'Méthode et sources']
+  ['agence', 'Le réseau et votre agence Laforêt'],
+  ['equipe', 'Une équipe à votre service'],
+  ['bien', 'Votre bien'],
+  ['cadastre', 'Situation cadastrale'],
+  ['secteur', 'Votre secteur'],
+  ['comparables', 'Les ventes comparables (DVF)'],
+  ['positionnement', 'Le prix de marché'],
+  ['ajustements', 'Ajustements et stratégie de prix'],
+  ['valeurVerte', 'DPE et assainissement'],
+  ['financement', 'Cible acquéreur et financement'],
+  ['methode', 'Méthode et sources'],
+  ['accompagnement', 'Votre accompagnement Laforêt'],
+  ['exclusivite', 'Le mandat exclusif Favoriz'],
+  ['annonce', 'Votre future annonce']
 ] as const;
-
-/** Pages placées après « Notre estimation » dans le dossier. */
-export const PAGES_APRES_ESTIMATION: PageAvis[] = ['annonce', 'etapes', 'methode'];
 
 export type PageAvis = (typeof PAGES_AVIS)[number][0];
 
@@ -125,7 +134,27 @@ export type AvisDetails = {
   pages: Record<PageAvis, boolean>;
   annonce: Annonce;
   etapes: Etape[];
+  analyse: AnalyseBien;
 };
+
+export type AnalyseBien = {
+  pointsForts: string[];
+  vigilance: string[];
+  cibles: { profil: string; raison: string }[];
+};
+
+export const PROFILS_ACQUEREUR = [
+  'Famille',
+  'Couple',
+  'Primo-accédant',
+  'Investisseur',
+  'Profession libérale',
+  'Retraité',
+  'Résidence secondaire'
+];
+
+export const CONCLUSION_DEFAUT =
+  'Notre ambition est de vous proposer un avis de valeur juste, une stratégie de commercialisation efficace et un accompagnement humain et professionnel jusqu’à la concrétisation de votre projet immobilier.';
 
 export const AGENCE_DEFAUT: Agence = {
   nom: 'Laforêt Roanne',
@@ -137,7 +166,11 @@ export const AGENCE_DEFAUT: Agence = {
   site: 'www.laforet.com/roanne',
   horaires: 'Du lundi au vendredi, 9 h - 12 h et 14 h - 18 h',
   mentions:
-    'L’Agence Gambetta, SAS au capital de 10 000 €, siège social 38 rue Émile Noirot 42300 Roanne. SIREN 949 374 227, TVA FR60949374227. Agent immobilier et administrateur de biens, carte professionnelle (T) CPI 42012023000000003. Garanties financières transaction et gestion : Allianz, 1 cours Michelet, 92076 Paris La Défense. Chaque agence est une entité juridiquement et financièrement indépendante.'
+    'L’Agence Gambetta, SAS au capital de 10 000 €, siège social 38 rue Émile Noirot 42300 Roanne. SIREN 949 374 227, TVA FR60949374227. Agent immobilier et administrateur de biens, carte professionnelle (T) CPI 42012023000000003. Garanties financières transaction et gestion : Allianz, 1 cours Michelet, 92076 Paris La Défense. Chaque agence est une entité juridiquement et financièrement indépendante.',
+  portails: '11',
+  reseauxSociaux: 'LinkedIn, Facebook, Instagram, X',
+  arbres: 'Le réseau Laforêt plante 30 000 arbres chaque année.',
+  avisClients: ''
 };
 
 export const MAX_COMPARABLES_AVIS = 10;

@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { genererAnnonce, type AnnonceIA } from '@/lib/ai/annonce';
+import { genererSynthese, type SyntheseBien } from '@/lib/ai/synthese';
 import { MAX_COMPARABLES_AVIS, MAX_ETAPES, PAGES_AVIS } from './types';
 
 export type AvisActionResult = { ok: true; avisId: string } | { ok: false; error: string };
@@ -35,7 +36,11 @@ const AvisSchema = z.object({
     email: texte(120),
     site: texte(200),
     horaires: texte(200),
-    mentions: texte(1200)
+    mentions: texte(1200),
+    portails: texte(40),
+    reseauxSociaux: texte(200),
+    arbres: texte(400),
+    avisClients: texte(300)
   }),
   prix: z
     .object({
@@ -70,6 +75,11 @@ const AvisSchema = z.object({
     pointsForts: z.array(texte(120)).max(6),
     honoraires: z.enum(['vendeur', 'acquereur']),
     depensesEnergie: texte(200)
+  }),
+  analyse: z.object({
+    pointsForts: z.array(texte(200)).max(8),
+    vigilance: z.array(texte(200)).max(8),
+    cibles: z.array(z.object({ profil: texte(60), raison: texte(200) })).max(6)
   }),
   etapes: z
     .array(z.object({ titre: texte(80), delai: texte(40), texte: texte(400) }))
@@ -205,5 +215,25 @@ export async function redigerAnnonce(
       niveau: p.niveau as string | null
     })),
     t.data
+  );
+}
+
+/** Rédige les points forts, points de vigilance et la cible acquéreur à partir de la fiche du bien. */
+export async function redigerSynthese(
+  bienId: string
+): Promise<{ ok: true; synthese: SyntheseBien } | { ok: false; error: string }> {
+  const { supabase, user } = await session();
+  if (!user) return { ok: false, error: 'Session expirée : reconnectez-vous.' };
+  const [{ data: bien }, { data: pieces }] = await Promise.all([
+    supabase.from('biens').select('*').eq('id', bienId).maybeSingle(),
+    supabase.from('bien_pieces').select('nom, surface').eq('bien_id', bienId).order('ordre')
+  ]);
+  if (!bien) return { ok: false, error: 'Bien introuvable.' };
+  return genererSynthese(
+    bien,
+    (pieces ?? []).map((p) => ({
+      nom: p.nom as string,
+      surface: p.surface === null ? null : Number(p.surface)
+    }))
   );
 }

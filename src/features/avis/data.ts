@@ -4,8 +4,10 @@ import type { EstimationDetails } from '@/lib/estimation/estimer';
 import { TYPES_BIEN, libelle } from '@/lib/biens/options';
 import {
   AGENCE_DEFAUT,
+  CONCLUSION_DEFAUT,
   CONSEILLER_DEFAUT,
   ETAPES_DEFAUT,
+  PAGES_AVIS,
   MAX_COMPARABLES_AVIS,
   arrondiPrix,
   cleComparable,
@@ -184,7 +186,7 @@ export function avisParDefaut(
     // Le conseiller est repris d'un avis à l'autre ; les avis antérieurs à la photo de couverture repartent du profil par défaut.
     conseiller:
       precedentConseiller?.accroche !== undefined ? precedentConseiller : CONSEILLER_DEFAUT,
-    agence: precedentAgence ?? AGENCE_DEFAUT,
+    agence: { ...AGENCE_DEFAUT, ...precedentAgence },
     prix: {
       basse: arrondiPrix(r.valeurBasse),
       haute: arrondiPrix(r.valeurHaute),
@@ -195,28 +197,17 @@ export function avisParDefaut(
       introduction:
         'Vous nous avez confié l’estimation de votre bien. Ce dossier présente la valeur de marché que nous retenons et, surtout, les éléments concrets qui la justifient : les ventes réellement conclues dans votre secteur, les caractéristiques de votre bien et notre connaissance du marché local.',
       bien: estimation.argumentaire ?? '',
-      conclusion:
-        'Cette estimation constitue une base de travail. Nous vous proposons d’en échanger de vive voix pour définir ensemble le prix de présentation et la stratégie de mise en vente les plus adaptés à votre projet et à votre calendrier.'
+      conclusion: CONCLUSION_DEFAUT
     },
     comparables: tri.slice(0, 8).map(cleComparable),
     photos: {
       couverture: photos[0]?.id ?? null,
       bien: photos.slice(1, 5).map((p) => p.id)
     },
-    pages: {
-      secteur: true,
-      bien: true,
-      comparables: true,
-      positionnement: true,
-      ajustements: estimation.details.ajustements.length > 0,
-      valeurVerte: true,
-      financement: true,
-      annonce: true,
-      etapes: true,
-      methode: true
-    },
+    pages: Object.fromEntries(PAGES_AVIS.map(([k]) => [k, true])) as AvisDetails['pages'],
     annonce: annonceParDefaut(donnees.bien, estimation.details.annonce),
-    etapes: ETAPES_DEFAUT
+    etapes: ETAPES_DEFAUT,
+    analyse: estimation.details.synthese ?? { pointsForts: [], vigilance: [], cibles: [] }
   };
   if (!avis) return neuf;
   // Un avis existant garde ses réglages (les avis antérieurs à l'annonce la reçoivent ici) ;
@@ -227,7 +218,13 @@ export function avisParDefaut(
     annonce: avis.details.annonce?.texte.trim() ? avis.details.annonce : neuf.annonce,
     etapes: avis.details.etapes ?? neuf.etapes,
     conseiller:
-      avis.details.conseiller.accroche === undefined ? neuf.conseiller : avis.details.conseiller
+      avis.details.conseiller.accroche === undefined ? neuf.conseiller : avis.details.conseiller,
+    agence: { ...AGENCE_DEFAUT, ...avis.details.agence },
+    // Synthèse : reprise de l'estimation tant que le conseiller n'en a pas rédigé.
+    analyse:
+      avis.details.analyse?.pointsForts.length || avis.details.analyse?.vigilance.length
+        ? avis.details.analyse
+        : neuf.analyse
   };
   if (garde.estimationId === estimation.id) return garde;
   return {
