@@ -233,7 +233,7 @@ export function MarcheExplorer({ criteresInitiaux, bien }: { criteresInitiaux: C
             Période
           </Label>
           <NativeSelect id='m-annees' className='w-full' value={String(criteres.annees)} onChange={(e) => set('annees', Number(e.target.value))}>
-            {[1, 2, 3, 4, 5].map((a) => (
+            {(bien ? [1, 2, 3] : [1, 2, 3, 4, 5]).map((a) => (
               <NativeSelectOption key={a} value={String(a)}>
                 {a} an{a > 1 ? 's' : ''}
               </NativeSelectOption>

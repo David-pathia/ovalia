@@ -91,7 +91,7 @@ export function selectionnerComparables(
 
   const zone = ventes.filter((v) => {
     const m2 = v.prix / v.surface;
-    return v.type === type && m2 > 300 && m2 < 9000 && moisDepuis(v.date) <= 66;
+    return v.type === type && m2 > 300 && m2 < 9000 && moisDepuis(v.date) <= 36;
   });
   const evolution = tendance(zone);
 

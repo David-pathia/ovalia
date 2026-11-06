@@ -179,6 +179,11 @@ export function EstimationPanel({
             {new Date(estimation.createdAt).toLocaleDateString('fr-FR')}
             {d.localisation.precision === 'commune' && ' · position approximative (centre de la commune)'}
           </p>
+          {d.periodeAns !== 3 && (
+            <p className='text-cuivre mt-1 text-xs font-semibold'>
+              Estimation calculée avec des ventes jusqu’à 5 ans : cliquez sur « Relancer » pour ne garder que les 3 dernières années.
+            </p>
+          )}
         </div>
         <div className='flex flex-wrap items-start gap-2'>
           <Button size='sm' className='font-semibold' nativeButton={false} render={<Link href={`/dashboard/biens/${bienId}/avis`} />}>

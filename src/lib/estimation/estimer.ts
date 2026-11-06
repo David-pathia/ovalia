@@ -230,7 +230,12 @@ export async function estimerBien(
             ))
           ]
         : ventes;
-    const choisies = [...new Map(pool.filter((v) => ids.has(v.id)).map((v) => [v.id, v])).values()];
+    // Même règle qu'en automatique : seules les ventes des 3 dernières années sont retenues.
+    const choisies = [
+      ...new Map(
+        pool.filter((v) => ids.has(v.id) && moisDepuis(v.date) <= 36).map((v) => [v.id, v])
+      ).values()
+    ];
     selection = marcheSurSelection(bienEstime, choisies, ventes, loc, loc.precision === 'adresse');
     if (!selection) return { ok: false, error: 'Choisissez au moins 3 ventes comparables.' };
   } else {

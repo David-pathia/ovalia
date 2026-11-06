@@ -56,7 +56,7 @@ export default async function MarchePage({ searchParams }: { searchParams: Promi
         piecesMax: b.pieces ? b.pieces + 1 : null,
         terrainMin: b.type === 'maison' && terrain ? arrondi(terrain / 3) : null,
         terrainMax: b.type === 'maison' && terrain ? arrondi(terrain * 3) : null,
-        annees: 5
+        annees: 3
       };
       bien = {
         id: b.id,
