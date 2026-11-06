@@ -199,7 +199,7 @@ export function PhotoPrincipale({
       {!principale || !vue ? (
         <label
           htmlFor='photo-principale'
-          className='text-muted-foreground hover:text-foreground flex aspect-[16/7] cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed text-sm'
+          className='text-muted-foreground hover:text-foreground flex h-24 cursor-pointer flex-row items-center justify-center gap-3 rounded-xl border border-dashed text-sm'
         >
           {occupe === 'envoi' ? (
             <Icons.spinner className='size-6 animate-spin' />
@@ -211,7 +211,7 @@ export function PhotoPrincipale({
             : 'Choisissez la photo la plus valorisante du bien'}
         </label>
       ) : (
-        <div className='grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]'>
+        <div className='grid gap-4 md:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]'>
           {originale?.url && vue.url && vue.id !== originale.id ? (
             <Comparateur avant={originale.url} apres={vue.url} />
           ) : vue.url ? (
