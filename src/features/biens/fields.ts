@@ -199,15 +199,13 @@ export const BIEN_GROUPS: FieldGroup[] = [
       {
         key: 'motif_vente',
         label: 'Motif de la vente et délai souhaité',
-        kind: 'text',
-        fiche: true
+        kind: 'text'
       },
       {
         key: 'prix_envisage',
         label: 'Prix envisagé par les propriétaires',
         kind: 'int',
-        unit: '€',
-        fiche: true
+        unit: '€'
       },
       { key: 'observations', label: 'Observations', kind: 'textarea', wide: true }
     ]
