@@ -7,7 +7,7 @@ import { anthropicConfigured, demanderTexte, extraireJson } from './client';
 const SyntheseSchema = z.object({
   pointsForts: z.array(z.string()),
   vigilance: z.array(z.string()),
-  cibles: z.array(z.object({ profil: z.string(), raison: z.string() }))
+  cibles: z.array(z.object({ profil: z.string(), raison: z.string(), approche: z.string() }))
 });
 export type SyntheseBien = z.infer<typeof SyntheseSchema>;
 
@@ -16,7 +16,12 @@ Tu prépares, pour le dossier d'estimation remis au propriétaire, une lecture �
 
 - pointsForts : 4 à 6 atouts qui soutiennent sa valeur et son attractivité (emplacement, jardin, luminosité, agencement, équipements, stationnement…). Une phrase courte chacun (12 mots au plus).
 - vigilance : 2 à 5 points objectifs susceptibles d'influencer la commercialisation (travaux, DPE, chauffage ancien, assainissement à contrôler, absence d'extérieur…). Ton factuel et bienveillant, sans dramatiser. Une phrase courte chacun.
-- cibles : 2 à 4 profils d'acquéreurs les plus probables, choisis parmi : Famille, Couple, Primo-accédant, Investisseur, Profession libérale, Retraité, Résidence secondaire. Pour chacun, une raison concrète tirée de la fiche (12 mots au plus).
+- cibles : les 2 ou 3 profils d'acquéreurs prioritaires, du plus au moins pertinent, choisis parmi les suivants et seulement s'ils sont réellement adaptés au bien :
+  Famille (chambres, jardin, écoles, environnement) ; Primo-accédant (budget, financement, travaux éventuels) ;
+  Investisseur (rentabilité locative, charges, potentiel de location) ; Profession libérale (accessibilité, stationnement, possibilités d'aménagement) ;
+  Artisan (garage, atelier, dépendances, stockage) ; Retraité (plain-pied, accessibilité, proximité des commerces) ;
+  Résidence secondaire (environnement, entretien, potentiel de loisirs).
+  Pour chacun : « raison » = justification concrète tirée de la fiche (15 mots au plus) ; « approche » = comment adapter notre communication pour ce profil (15 mots au plus).
 
 Règles : n'utilise que les informations fournies, n'invente rien ; ne parle ni du prix ni du motif de vente. Écris en français.
 
@@ -88,7 +93,7 @@ export async function genererSynthese(
       synthese: {
         pointsForts: nettoie(parsed.data.pointsForts, 6),
         vigilance: nettoie(parsed.data.vigilance, 5),
-        cibles: parsed.data.cibles.filter((c) => c.profil.trim()).slice(0, 4)
+        cibles: parsed.data.cibles.filter((c) => c.profil.trim()).slice(0, 3)
       }
     };
   } catch (error) {

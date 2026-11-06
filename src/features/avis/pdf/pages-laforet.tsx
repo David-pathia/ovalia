@@ -119,6 +119,9 @@ export function Agence({ d }: { d: AvisPdfData }) {
 
 export function Equipe({ d }: { d: AvisPdfData }) {
   const { avis } = d;
+  // Le conseiller qui signe le dossier est mis en avant dans l'équipe.
+  const estConseiller = (m: { prenom: string; nom: string }) =>
+    avis.conseiller.nom.toLowerCase().includes(m.nom.toLowerCase());
   const a = avis.agence;
   return (
     <PageDossier titre='Une équipe à votre service' avis={avis}>
@@ -141,8 +144,8 @@ export function Equipe({ d }: { d: AvisPdfData }) {
                   width: 104,
                   height: 104,
                   borderRadius: 16,
-                  borderWidth: 2.5,
-                  borderColor: i % 2 ? C.marine : C.ciel,
+                  borderWidth: estConseiller(m) ? 3.5 : 2.5,
+                  borderColor: estConseiller(m) ? C.marine : i % 2 ? C.marine : C.ciel,
                   objectFit: 'cover'
                 }}
               />
@@ -154,6 +157,22 @@ export function Equipe({ d }: { d: AvisPdfData }) {
             <Text
               style={{ marginTop: 6, fontWeight: 700, color: C.marine, fontSize: 9.5 }}
             >{`${m.prenom} ${m.nom.toUpperCase()}`}</Text>
+            {estConseiller(m) ? (
+              <Text
+                style={{
+                  fontSize: 7,
+                  fontWeight: 700,
+                  color: C.blanc,
+                  backgroundColor: C.marine,
+                  borderRadius: 6,
+                  paddingHorizontal: 6,
+                  paddingVertical: 1.5,
+                  marginTop: 2
+                }}
+              >
+                VOTRE CONSEILLER
+              </Text>
+            ) : null}
             <Text style={{ color: C.doux, fontSize: 8.5 }}>{m.role}</Text>
           </View>
         ))}

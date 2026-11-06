@@ -17,7 +17,12 @@ export const SOURCES_RESEAU =
 export const EQUIPE_TRANSACTION = [
   { prenom: 'Sabine', nom: 'Lorton', role: 'Directrice', photo: 'equipe/sabine.jpg' },
   { prenom: 'Victoria', nom: 'Martins Justo', role: 'Directrice', photo: 'equipe/victoria.jpg' },
-  { prenom: 'Julien', nom: 'Ossedat', role: 'Négociateur', photo: 'conseiller.jpg' /* même photo qu'en couverture */ },
+  {
+    prenom: 'Julien',
+    nom: 'Ossedat',
+    role: 'Négociateur',
+    photo: 'conseiller.jpg' /* même photo qu'en couverture */
+  },
   { prenom: 'Fabienne', nom: 'Defont', role: 'Agent commerciale', photo: 'equipe/fabienne.jpg' }
 ] as const;
 
@@ -132,27 +137,8 @@ export const FAVORIZ = {
     'Avec l’exclusivité Laforêt, nous partageons un objectif commun : vendre votre bien dans les meilleures conditions, grâce à une stratégie cohérente, un engagement réciproque et une transparence totale.'
 };
 
-export const DVF_EXPLICATION = {
-  definition:
-    'DVF signifie « Demandes de valeurs foncières » : ce sont les données publiques des ventes immobilières enregistrées par l’administration fiscale. Le prix DVF est la valeur foncière déclarée dans l’acte, hors frais de notaire et hors droits et taxes liés à l’acquisition.',
-  honoraires: [
-    'Honoraires à la charge du vendeur : ils sont généralement inclus dans le prix déclaré.',
-    'Honoraires à la charge de l’acquéreur et distincts du prix : ils ne sont normalement pas compris dans la valeur foncière.'
-  ],
-  ecart:
-    'Le prix DVF n’est donc pas toujours équivalent au prix « frais d’agence inclus » affiché dans une annonce.',
-  limites: [
-    'l’état intérieur du logement',
-    'la qualité des rénovations',
-    'les travaux à réaliser',
-    'la classe énergie (DPE)',
-    'les prestations et équipements',
-    'l’année de construction',
-    'les particularités qui justifient une surcote ou une décote'
-  ],
-  conclusion:
-    'Ces données sont une base de comparaison indispensable, complétée par notre analyse professionnelle de votre bien.'
-};
+export const DVF_ENCADRE =
+  'Les données DVF (Demandes de valeurs foncières) recensent les transactions immobilières enregistrées par l’administration fiscale. Les montants correspondent aux valeurs foncières déclarées, hors frais de notaire. Les honoraires d’agence peuvent être inclus lorsqu’ils sont à la charge du vendeur. Ces données ne précisent pas l’état intérieur du bien, les travaux réalisés ou son classement énergétique. Elles constituent donc une base de comparaison, complétée par notre expertise locale.';
 
 export const ASSAINISSEMENT = {
   collectif:

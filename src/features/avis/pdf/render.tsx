@@ -8,12 +8,7 @@ import { lireParametresCredit } from '@/features/credit/data';
 import { simuler, tauxPourDuree, usurePourDuree } from '@/lib/credit';
 import { avisParDefaut, chargerBienPourAvis, infosAnnonce } from '../data';
 import { cleComparable, type AvisDetails } from '../types';
-import {
-  COUCHE_ORTHO_CADASTRE,
-  COUCHE_PLAN_CADASTRE,
-  carteStatique,
-  parcelleAuPoint
-} from './carte';
+import { COUCHE_ORTHO_CADASTRE, carteStatique, parcelleDuBien } from './carte';
 import { EQUIPE_TRANSACTION } from '../laforet';
 import { AvisDocument } from './document';
 import type { AvisPdfData, ImagePdf } from './base';
@@ -62,31 +57,25 @@ async function lireImage(fichier: string): Promise<ImagePdf | null> {
   }
 }
 
-/** Situation cadastrale : parcelle du bien sur photo aérienne, plus un plan de l'environnement. */
-async function cadastre(lat: number, lon: number): Promise<AvisPdfData['cadastre']> {
-  const parcelle = await parcelleAuPoint(lat, lon);
+/** Situation cadastrale : parcelle retrouvée à partir de l'adresse exacte du bien, sur photo aérienne et cadastre. */
+async function cadastre(
+  adresse: string,
+  repli: { lat: number; lon: number } | null
+): Promise<AvisPdfData['cadastre']> {
+  const { parcelle, point } = await parcelleDuBien(adresse, repli);
+  if (!point) return null;
   const polygones = parcelle?.contour.length ? [parcelle.contour] : [];
-  const reperes = parcelle ? [{ lat, lon }] : [{ lat, lon, principal: true }];
-  const [carte, environnement] = await Promise.all([
-    carteStatique(reperes, {
-      couches: COUCHE_ORTHO_CADASTRE,
-      polygones,
-      etendueMinM: 170,
-      margeM: 45,
-      largeur: 1600,
-      hauteur: 1000
-    }),
-    carteStatique([{ lat, lon, principal: true }], {
-      couches: COUCHE_PLAN_CADASTRE,
-      etendueMinM: 650,
-      margeM: 0,
-      largeur: 1000,
-      hauteur: 700
-    })
-  ]);
-  // Sans parcelle, le repère reste visible ; avec, le contour suffit.
+  const carte = await carteStatique(parcelle ? [point] : [{ ...point, principal: true }], {
+    couches: COUCHE_ORTHO_CADASTRE,
+    polygones,
+    etendueMinM: 160,
+    margeM: 40,
+    largeur: 1600,
+    hauteur: 1150
+  });
+  // Avec la parcelle, son contour suffit ; sans elle, le repère situe l'adresse.
   if (carte && parcelle) carte.reperes = [];
-  return { carte, environnement, parcelle };
+  return { carte, environnement: null, parcelle };
 }
 
 /** Construit toutes les données du dossier puis rend le PDF. */
@@ -170,7 +159,7 @@ export async function genererAvisPdf(
         .map((p) => telechargerImage(supabase, p.path))
     ),
     lireParametresCredit(),
-    pointBien ? cadastre(pointBien.lat, pointBien.lon) : Promise.resolve(null),
+    cadastre([bien.adresse, bien.code_postal, bien.ville].filter(Boolean).join(' '), pointBien),
     Promise.all(
       EQUIPE_TRANSACTION.map(async (m) => ({
         prenom: m.prenom,

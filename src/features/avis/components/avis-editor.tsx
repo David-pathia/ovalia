@@ -537,14 +537,16 @@ export function AvisEditor({
             </Champ>
           </div>
           <p className='text-muted-foreground mt-4 mb-1.5 text-xs'>
-            Cible acquéreur (profil et raison)
+            Cible acquéreur : 2 ou 3 profils prioritaires (profil, pourquoi, notre approche)
           </p>
           <div className='space-y-2'>
             {avis.analyse.cibles.map((c, i) => (
-              <div key={i} className='flex gap-2'>
+              <div
+                key={i}
+                className='grid gap-2 sm:grid-cols-[11rem_minmax(0,1fr)_minmax(0,1fr)_auto]'
+              >
                 <Input
                   aria-label={`Profil ${i + 1}`}
-                  className='w-44 shrink-0'
                   list='profils-acquereur'
                   value={c.profil}
                   onChange={(e) =>
@@ -561,6 +563,7 @@ export function AvisEditor({
                 />
                 <Input
                   aria-label={`Raison ${i + 1}`}
+                  placeholder='Pourquoi ce profil'
                   value={c.raison}
                   onChange={(e) =>
                     setAvis((a) => ({
@@ -569,6 +572,22 @@ export function AvisEditor({
                         ...a.analyse,
                         cibles: a.analyse.cibles.map((x, j) =>
                           j === i ? { ...x, raison: e.target.value } : x
+                        )
+                      }
+                    }))
+                  }
+                />
+                <Input
+                  aria-label={`Approche ${i + 1}`}
+                  placeholder='Notre approche'
+                  value={c.approche ?? ''}
+                  onChange={(e) =>
+                    setAvis((a) => ({
+                      ...a,
+                      analyse: {
+                        ...a.analyse,
+                        cibles: a.analyse.cibles.map((x, j) =>
+                          j === i ? { ...x, approche: e.target.value } : x
                         )
                       }
                     }))
@@ -599,13 +618,13 @@ export function AvisEditor({
             <Button
               size='sm'
               variant='outline'
-              disabled={avis.analyse.cibles.length >= 4}
+              disabled={avis.analyse.cibles.length >= 3}
               onClick={() =>
                 setAvis((a) => ({
                   ...a,
                   analyse: {
                     ...a.analyse,
-                    cibles: [...a.analyse.cibles, { profil: '', raison: '' }]
+                    cibles: [...a.analyse.cibles, { profil: '', raison: '', approche: '' }]
                   }
                 }))
               }

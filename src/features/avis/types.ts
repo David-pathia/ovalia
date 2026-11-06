@@ -47,11 +47,11 @@ export const PAGES_AVIS = [
   ['equipe', 'Une équipe à votre service'],
   ['bien', 'Votre bien'],
   ['cadastre', 'Situation cadastrale'],
-  ['secteur', 'Votre secteur'],
-  ['comparables', 'Les ventes comparables (DVF)'],
+  ['comparables', 'Les ventes de votre secteur'],
   ['positionnement', 'Le prix de marché'],
   ['ajustements', 'Ajustements et stratégie de prix'],
-  ['valeurVerte', 'DPE et assainissement'],
+  ['valeurVerte', 'La performance énergétique (DPE)'],
+  ['assainissement', 'L’assainissement'],
   ['financement', 'Cible acquéreur et financement'],
   ['methode', 'Méthode et sources'],
   ['accompagnement', 'Votre accompagnement Laforêt'],
@@ -140,17 +140,18 @@ export type AvisDetails = {
 export type AnalyseBien = {
   pointsForts: string[];
   vigilance: string[];
-  cibles: { profil: string; raison: string }[];
+  cibles: { profil: string; raison: string; approche?: string }[];
 };
 
 export const PROFILS_ACQUEREUR = [
   'Famille',
-  'Couple',
   'Primo-accédant',
   'Investisseur',
   'Profession libérale',
+  'Artisan',
   'Retraité',
-  'Résidence secondaire'
+  'Résidence secondaire',
+  'Couple'
 ];
 
 export const CONCLUSION_DEFAUT =

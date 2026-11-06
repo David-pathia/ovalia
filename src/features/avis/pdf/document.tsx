@@ -7,12 +7,14 @@ import {
   LinearGradient,
   Page,
   Path,
+  Polygon,
   Rect,
   Stop,
   Svg,
   Text,
   View
 } from '@react-pdf/renderer';
+import { LIBELLE_SECTEUR } from '@/lib/estimation/calcul';
 import { Accompagnement, Agence, Equipe, Exclusivite } from './pages-laforet';
 import {
   AttractiviteDpe,
@@ -326,163 +328,57 @@ function Sommaire({ d }: { d: AvisPdfData }) {
   );
 }
 
-function GraphiqueSemestres({
-  points
-}: {
-  points: { periode: string; nb: number; medianeM2: number }[];
-}) {
-  if (points.length < 2) return null;
-  const W = 470;
-  const H = 120;
-  const min = Math.min(...points.map((p) => p.medianeM2));
-  const max = Math.max(...points.map((p) => p.medianeM2));
-  const pad = (max - min) * 0.15 || max * 0.05;
-  const lo = min - pad;
-  const hi = max + pad;
-  const maxNb = Math.max(...points.map((p) => p.nb));
-  const x = (i: number) => 30 + (i * (W - 50)) / (points.length - 1);
-  const y = (v: number) => H - 18 - ((v - lo) / (hi - lo)) * (H - 30);
-  const ligne = points
-    .map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)} ${y(p.medianeM2).toFixed(1)}`)
-    .join(' ');
-  return (
-    <Svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
-      {points.map((p, i) => (
-        <Rect
-          key={`b${i}`}
-          x={x(i) - 9}
-          y={H - 18 - (p.nb / maxNb) * 50}
-          width={18}
-          height={(p.nb / maxNb) * 50}
-          fill={C.trait}
-        />
-      ))}
-      <Line x1='30' y1={H - 18} x2={W - 20} y2={H - 18} stroke={C.trait} strokeWidth={0.8} />
-      <Path d={ligne} stroke={C.marine} strokeWidth={2} fill='none' />
-      {points.map((p, i) => (
-        <Circle key={`c${i}`} cx={x(i)} cy={y(p.medianeM2)} r={2.6} fill={C.marine} />
-      ))}
-      {points.map((p, i) => (
-        <Text
-          key={`t${i}`}
-          x={x(i)}
-          y={H - 6}
-          style={{ fontSize: 6.5, fill: C.doux, fontFamily: 'Lexend' }}
-          textAnchor='middle'
-        >
-          {p.periode}
-        </Text>
-      ))}
-      {points.map((p, i) => (
-        <Text
-          key={`v${i}`}
-          x={x(i)}
-          y={y(p.medianeM2) - 6}
-          style={{ fontSize: 6.5, fill: C.marine, fontFamily: 'Lexend' }}
-          textAnchor='middle'
-        >
-          {nb(p.medianeM2)}
-        </Text>
-      ))}
-    </Svg>
-  );
-}
-
-function Secteur({ d }: { d: AvisPdfData }) {
-  const { secteur, bien } = d;
-  const m = secteur.marche;
-  const typeLib = bien.type === 'appartement' ? 'appartements' : 'maisons';
-  return (
-    <PageDossier titre='Votre secteur' avis={d.avis}>
-      {secteur.carte && (
-        <View style={{ marginBottom: 12 }}>
-          <Carte carte={secteur.carte} hauteur={210} />
-        </View>
-      )}
-      {m && m.stats.medianeM2 ? (
-        <>
-          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
-            <Kpi
-              label={`${typeLib} vendu(e)s`}
-              valeur={nb(m.stats.nb)}
-              aide={`à moins de ${nb(m.criteres.rayonKm, 1)} km, ${m.criteres.annees} ans`}
-            />
-            <Kpi
-              label='Prix médian au m²'
-              valeur={eur(m.stats.medianeM2)}
-              aide={
-                m.stats.q1M2 && m.stats.q3M2
-                  ? `moitié centrale : ${nb(m.stats.q1M2)} à ${nb(m.stats.q3M2)} €`
-                  : undefined
-              }
-            />
-            <Kpi
-              label='Prix médian'
-              valeur={m.stats.prixMedian ? eur(m.stats.prixMedian) : '—'}
-              aide={
-                m.stats.surfaceMediane
-                  ? `surface médiane ${nb(m.stats.surfaceMediane)} m²`
-                  : undefined
-              }
-            />
-            <Kpi
-              label='Tendance'
-              valeur={
-                m.tendanceAnnuelle === null
-                  ? 'stable'
-                  : `${m.tendanceAnnuelle >= 0 ? '+' : ''}${nb(m.tendanceAnnuelle * 100, 1)} %/an`
-              }
-              aide='évolution du prix au m²'
-            />
-          </View>
-          <View style={s.carte}>
-            <Text style={s.h3}>Prix médian au m² des {typeLib}, par semestre</Text>
-            <GraphiqueSemestres points={m.parSemestre} />
-            <Text style={s.petit}>
-              Barres : nombre de ventes. Courbe : prix médian au m², ventes notariées (DVF).
-            </Text>
-          </View>
-          <View style={s.carte}>
-            <Text style={s.h3}>Ce que disent les ventes</Text>
-            <Text>
-              {`Sur les ${m.criteres.annees} dernières années, ${nb(m.stats.nb)} ${typeLib} ont été vendu(e)s dans un rayon de ${nb(m.criteres.rayonKm, 1)} km autour de votre bien, à un prix médian de ${nb(m.stats.medianeM2)} € le m². La moitié de ces ventes se situe entre ${nb(m.stats.q1M2 ?? 0)} et ${nb(m.stats.q3M2 ?? 0)} € le m² : l’écart s’explique par l’état, les prestations, l’emplacement exact et la performance énergétique de chaque bien.`}
-              {m.parCommune.length > 1 &&
-                ` Par commune : ${m.parCommune
-                  .slice(0, 4)
-                  .map((c) => `${c.commune} ${nb(c.medianeM2)} €/m² (${c.nb} ventes)`)
-                  .join(', ')}.`}
-            </Text>
-          </View>
-        </>
-      ) : (
-        <View style={s.carte}>
-          <Text>
-            Les données de ventes du secteur n’ont pas pu être chargées au moment de l’édition de ce
-            dossier.
-          </Text>
-        </View>
-      )}
-      {secteur.population && (
-        <Text style={s.petit}>
-          {secteur.commune} compte {nb(secteur.population)} habitants (source INSEE via
-          geo.api.gouv.fr).
-        </Text>
-      )}
-    </PageDossier>
-  );
-}
-
 function Comparables({ d }: { d: AvisPdfData }) {
   const lignes = d.comparables;
   if (lignes.length === 0) return null;
+  const m = d.secteur.marche;
+  const typeLib = d.bien.type === 'appartement' ? 'Appartements' : 'Maisons';
   const m2 = lignes.map((c) => c.prixM2).sort((a, b) => a - b);
   const med =
     m2.length % 2 ? m2[(m2.length - 1) / 2]! : (m2[m2.length / 2 - 1]! + m2[m2.length / 2]!) / 2;
   return (
-    <PageDossier titre='Ventes comparables' avis={d.avis}>
-      {d.carteComparables && (
-        <View style={{ marginBottom: 12 }}>
-          <Carte carte={d.carteComparables} hauteur={250} numeros />
+    <PageDossier titre='Les ventes de votre secteur' avis={d.avis}>
+      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
+        <Kpi
+          label='Périmètre de recherche'
+          valeur={`${nb(d.estimation.marche.rayonKm, 1)} km`}
+          aide={
+            d.estimation.marche.secteur
+              ? LIBELLE_SECTEUR[d.estimation.marche.secteur]
+              : 'autour du bien'
+          }
+        />
+        {m?.stats.medianeM2 ? (
+          <>
+            <Kpi
+              label={`${typeLib} vendu(e)s`}
+              valeur={nb(m.stats.nb)}
+              aide={`à moins de ${nb(m.criteres.rayonKm, 1)} km, 3 ans`}
+            />
+            <Kpi
+              label='Prix médian du secteur'
+              valeur={`${nb(m.stats.medianeM2)} €/m²`}
+              aide='toutes surfaces confondues'
+            />
+          </>
+        ) : null}
+        <Kpi
+          label='Tendance'
+          valeur={
+            d.estimation.marche.tendanceAnnuelle === null
+              ? 'stable'
+              : `${d.estimation.marche.tendanceAnnuelle >= 0 ? '+' : ''}${nb(d.estimation.marche.tendanceAnnuelle * 100, 1)} %/an`
+          }
+          aide='évolution du prix au m²'
+        />
+      </View>
+      {(d.carteComparables ?? d.secteur.carte) && (
+        <View style={{ marginBottom: 10 }}>
+          <Carte
+            carte={(d.carteComparables ?? d.secteur.carte)!}
+            hauteur={d.carteComparables ? 140 : 115}
+            numeros
+          />
           <Text style={[s.petit, { marginTop: 3 }]}>
             Point orange : votre bien. Points numérotés : ventes du tableau ci-dessous.
           </Text>
@@ -515,7 +411,7 @@ function Comparables({ d }: { d: AvisPdfData }) {
         ))}
       </View>
       {lignes.map((c) => (
-        <View key={c.n} style={s.ligne} wrap={false}>
+        <View key={c.n} style={[s.ligne, { paddingVertical: 2.5 }]} wrap={false}>
           <Text style={{ flex: 0.4, fontSize: 8, fontWeight: 700, color: C.marine }}>{c.n}</Text>
           <Text style={{ flex: 0.9, fontSize: 8 }}>{moisAnnee(c.date)}</Text>
           <Text
@@ -546,7 +442,8 @@ function Comparables({ d }: { d: AvisPdfData }) {
         style={[
           s.carteBleue,
           {
-            marginTop: 12,
+            marginTop: 8,
+            paddingVertical: 10,
             flexDirection: 'row',
             justifyContent: 'space-between',
             alignItems: 'center'
@@ -558,11 +455,9 @@ function Comparables({ d }: { d: AvisPdfData }) {
         <Text style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.25 }}>{eur(med)}</Text>
       </View>
       <Text style={s.petit}>
-        Ventes notariées publiées par l’administration fiscale (DVF). Prix net vendeur hors frais de
-        notaire, à la date de l’acte. Les ventes ont été retenues pour leur proximité, leur surface,
-        leur nombre de pièces et leur terrain proches de votre bien.
+        {`${d.estimation.marche.criteres}. Ventes retenues pour leur proximité, leur surface, leur nombre de pièces et leur terrain proches de votre bien ; prix à la date de l’acte.`}
       </Text>
-      <EncadreDvf periodeAns={d.estimation.periodeAns ?? 5} />
+      <EncadreDvf />
     </PageDossier>
   );
 }
@@ -807,7 +702,7 @@ function ValeurVerte({ d }: { d: AvisPdfData }) {
     <PageDossier titre='La valeur verte de votre bien' avis={avis}>
       <View style={s.carte}>
         <Text style={s.h2}>Performance énergétique</Text>
-        <Text style={{ marginBottom: 10 }}>
+        <Text style={{ marginBottom: 6 }}>
           Le prix de marché d’un bien dépend aussi de sa performance énergétique, qui pèse dans la
           décision et le budget des acquéreurs.
         </Text>
@@ -819,13 +714,13 @@ function ValeurVerte({ d }: { d: AvisPdfData }) {
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
-                  marginBottom: 3
+                  marginBottom: 1.5
                 }}
               >
                 <View
                   style={{
                     width: 70 + i * 22,
-                    height: 17,
+                    height: 14,
                     backgroundColor: couleur,
                     borderTopRightRadius: 8,
                     borderBottomRightRadius: 8,
@@ -924,9 +819,39 @@ function ValeurVerte({ d }: { d: AvisPdfData }) {
           La durée de validité d’un DPE est de 10 ans (les DPE réalisés avant le 1er juillet 2021 ne
           sont plus valables). Informations communiquées à titre indicatif.
         </Text>
+        <View
+          style={{
+            flexDirection: 'row',
+            gap: 10,
+            alignItems: 'center',
+            marginTop: 6,
+            backgroundColor: C.pale,
+            borderRadius: 8,
+            padding: 6
+          }}
+        >
+          <Svg width={46} height={28} viewBox='0 0 170 104'>
+            <Polygon points='20,46 85,8 150,46' fill={C.blanc} stroke={C.marine} strokeWidth={6} />
+            <Rect
+              x={30}
+              y={46}
+              width={110}
+              height={52}
+              fill={C.blanc}
+              stroke={C.marine}
+              strokeWidth={6}
+            />
+            <Rect x={74} y={66} width={22} height={32} fill={C.marine} />
+            <Path d='M50 40 L85 20 L120 40' stroke={C.ok} strokeWidth={10} fill='none' />
+          </Svg>
+          <Text style={{ flex: 1, fontSize: 8 }}>
+            Les leviers pour gagner une classe : isoler les combles et les murs, remplacer les
+            fenêtres anciennes, moderniser le chauffage et la ventilation. Un audit énergétique
+            chiffre précisément les travaux.
+          </Text>
+        </View>
       </View>
       <AttractiviteDpe d={d} />
-      <Assainissement d={d} />
     </PageDossier>
   );
 }
@@ -1202,11 +1127,11 @@ const PAGES: Record<string, (props: { d: AvisPdfData }) => React.ReactElement | 
   equipe: Equipe,
   bien: BienSynthese,
   cadastre: Cadastre,
-  secteur: Secteur,
   comparables: Comparables,
   positionnement: Positionnement,
   ajustements: Ajustements,
   valeurVerte: ValeurVerte,
+  assainissement: Assainissement,
   financement: CibleFinancement,
   methode: Methode,
   accompagnement: Accompagnement,

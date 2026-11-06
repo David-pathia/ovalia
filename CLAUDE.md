@@ -57,7 +57,12 @@ classif_projet `court_terme | moyen_terme | long_terme`. Champs Laforêt non mod
   Favoriz), `pdf/pages-bien.tsx` (bien synthétique, cadastre, stratégie de prix, DVF, assainissement, cible et financement,
   avis final). Contenus Laforêt dans `laforet.ts` (repris de la plaquette officielle), statistiques sourcées dans `sources.ts`
   (ne rien ajouter sans source publique datée). Photos de l'équipe : `assets/equipe/`.
-- Cadastre : `parcelleAuPoint` (API Carto IGN) + WMS ortho et Parcellaire Express, contour de la parcelle surligné.
+- Cadastre : `parcelleDuBien(adresse)` = géocodage BAN de l'adresse exacte → parcelle rattachée à l'adresse (lookup BAN), sinon
+  parcelle sous le point (API Carto IGN), sinon la plus proche (signalée « à confirmer ») ; une seule carte ortho + Parcellaire Express.
+- Rayon des comparables adapté à la densité (`densiteSecteur`, `RAYONS` dans calcul.ts) : urbain 1→5 km, périurbain 2→8 km,
+  rural 5→20 km ; on élargit le rayon avant d'assouplir les critères. Ventes de 3 ans maximum.
+- Assainissement : page dédiée (schémas SVG, non-conformités, coûts sourcés `COUTS_ASSAINISSEMENT` : tarifs Roannaise de l'Eau
+  2026, référence ministère 2013, prix constatés 2026, aides 2026). Cible acquéreur : 2-3 profils avec « notre approche ».
 - Synthèse IA (`src/lib/ai/synthese.ts`) : points forts, vigilance, cible acquéreur ; produite avec l'estimation (`details.synthese`)
   ou depuis l'éditeur (`redigerSynthese`). Comparables DVF sur 3 ans uniquement.
 - Retouche photo dans l'éditeur (« Améliorer ») : niveaux, contraste, couleurs, verts ravivés, côté navigateur ; jamais

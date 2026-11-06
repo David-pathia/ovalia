@@ -29,7 +29,39 @@ export type Marche = {
   tendanceAnnuelle: number | null; // évolution moyenne du prix au m² par an dans la zone
   confiance: 'élevée' | 'moyenne' | 'faible';
   criteres: string;
+  /** Densité du secteur, qui fixe le rayon de départ de la recherche. */
+  secteur?: Secteur;
 };
+
+export type Secteur = 'urbain' | 'periurbain' | 'rural';
+
+export const LIBELLE_SECTEUR: Record<Secteur, string> = {
+  urbain: 'secteur urbain dense',
+  periurbain: 'secteur résidentiel',
+  rural: 'secteur rural'
+};
+
+/** Rayons de recherche successifs selon la densité de ventes autour du bien (3 dernières années). */
+export const RAYONS: Record<Secteur, number[]> = {
+  urbain: [1, 2, 3, 5],
+  periurbain: [2, 3, 5, 8],
+  rural: [5, 10, 15, 20]
+};
+
+/** Densité du secteur : nombre de ventes du même type à moins de 1 km et de 3 km. */
+export function densiteSecteur(ventes: Vente[], origine: Point, type: 'maison' | 'appartement'): Secteur {
+  let a1 = 0;
+  let a3 = 0;
+  for (const v of ventes) {
+    if (v.type !== type || v.lat === null || v.lon === null) continue;
+    const d = distanceKm(origine, { lat: v.lat, lon: v.lon });
+    if (d <= 1) a1++;
+    if (d <= 3) a3++;
+  }
+  if (a1 >= 40) return 'urbain';
+  if (a3 >= 30) return 'periurbain';
+  return 'rural';
+}
 
 export type Resultat = {
   valeurBase: number;
@@ -95,11 +127,15 @@ export function selectionnerComparables(
   });
   const evolution = tendance(zone);
 
-  // On élargit progressivement les critères jusqu'à avoir assez de ventes comparables.
+  // Rayon de départ adapté à la densité du secteur ; on élargit d'abord le rayon en gardant des critères stricts
+  // (des ventes réellement comparables plutôt qu'un rayon rigide), puis, en dernier recours, les critères.
+  const secteur = densiteSecteur(zone, origine, type);
+  const rayons = RAYONS[secteur];
+  const max = rayons[rayons.length - 1]!;
   const paliers = [
-    { surface: 0.25, pieces: 1, terrain: 2.5, rayon: 4 },
-    { surface: 0.35, pieces: 1, terrain: 4, rayon: 7 },
-    { surface: 0.5, pieces: 2, terrain: Infinity, rayon: 12 }
+    ...rayons.map((rayon) => ({ surface: 0.25, pieces: 1, terrain: 2.5, rayon })),
+    { surface: 0.35, pieces: 1, terrain: 4, rayon: max },
+    { surface: 0.5, pieces: 2, terrain: Infinity, rayon: max }
   ];
 
   for (const [i, p] of paliers.entries()) {
@@ -158,7 +194,8 @@ export function selectionnerComparables(
         rayonKm: p.rayon,
         tendanceAnnuelle: evolution,
         confiance,
-        criteres: `${type === 'maison' ? 'Maisons' : 'Appartements'} de ${Math.round(bien.surface * (1 - p.surface))} à ${Math.round(bien.surface * (1 + p.surface))} m²${bien.pieces ? `, ${bien.pieces - p.pieces} à ${bien.pieces + p.pieces} pièces` : ''}, à moins de ${p.rayon} km, vendues depuis 5 ans`
+        secteur,
+        criteres: `${type === 'maison' ? 'Maisons' : 'Appartements'} de ${Math.round(bien.surface * (1 - p.surface))} à ${Math.round(bien.surface * (1 + p.surface))} m²${bien.pieces ? `, ${bien.pieces - p.pieces} à ${bien.pieces + p.pieces} pièces` : ''}, à moins de ${p.rayon} km (${LIBELLE_SECTEUR[secteur]}), vendues depuis 3 ans`
       }
     };
   }

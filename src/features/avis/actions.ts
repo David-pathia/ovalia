@@ -79,7 +79,9 @@ const AvisSchema = z.object({
   analyse: z.object({
     pointsForts: z.array(texte(200)).max(8),
     vigilance: z.array(texte(200)).max(8),
-    cibles: z.array(z.object({ profil: texte(60), raison: texte(200) })).max(6)
+    cibles: z
+      .array(z.object({ profil: texte(60), raison: texte(200), approche: texte(200).optional() }))
+      .max(6)
   }),
   etapes: z
     .array(z.object({ titre: texte(80), delai: texte(40), texte: texte(400) }))

@@ -93,42 +93,143 @@ export async function carteStatique(
 }
 
 export type Parcelle = {
+  idu: string;
   section: string;
   numero: string;
   contenance: number | null;
   commune: string;
   contour: Point[];
+  /** Comment la parcelle a été trouvée : rattachée à l'adresse (BAN), sous le point d'adresse, ou la plus proche. */
+  methode: 'adresse' | 'point' | 'proche';
 };
 
-/** Parcelle cadastrale qui contient le point (API Carto IGN, sans clé). */
-export async function parcelleAuPoint(lat: number, lon: number): Promise<Parcelle | null> {
-  const geom = encodeURIComponent(JSON.stringify({ type: 'Point', coordinates: [lon, lat] }));
+type FeatureParcelle = {
+  geometry: { type: string; coordinates: number[][][][] | number[][][] };
+  properties: {
+    idu: string;
+    section: string;
+    numero: string;
+    contenance?: number;
+    nom_com?: string;
+  };
+};
+
+const API_CARTO = 'https://apicarto.ign.fr/api/cadastre/parcelle';
+const UN_MOIS = 60 * 60 * 24 * 30;
+
+async function parcelles(query: string): Promise<FeatureParcelle[]> {
   try {
-    const res = await fetch(`https://apicarto.ign.fr/api/cadastre/parcelle?geom=${geom}`, {
-      next: { revalidate: 60 * 60 * 24 * 30 }
-    });
-    if (!res.ok) return null;
-    const json = (await res.json()) as {
-      features?: {
-        geometry: { type: string; coordinates: number[][][][] | number[][][] };
-        properties: { section: string; numero: string; contenance?: number; nom_com?: string };
-      }[];
-    };
-    const f = json.features?.[0];
-    if (!f) return null;
-    // Premier anneau extérieur du (Multi)Polygon.
-    const anneau =
-      (f.geometry.type === 'MultiPolygon'
-        ? (f.geometry.coordinates as number[][][][])[0]![0]
-        : (f.geometry.coordinates as number[][][])[0]) ?? [];
-    return {
-      section: f.properties.section,
-      numero: f.properties.numero,
-      contenance: f.properties.contenance ?? null,
-      commune: f.properties.nom_com ?? '',
-      contour: anneau.map(([x, y]) => ({ lon: x!, lat: y! }))
-    };
+    const res = await fetch(`${API_CARTO}?${query}`, { next: { revalidate: UN_MOIS } });
+    if (!res.ok) return [];
+    return ((await res.json()) as { features?: FeatureParcelle[] }).features ?? [];
   } catch {
-    return null;
+    return [];
   }
+}
+
+function versParcelle(f: FeatureParcelle, methode: Parcelle['methode']): Parcelle {
+  // Premier anneau extérieur du (Multi)Polygon.
+  const anneau =
+    (f.geometry.type === 'MultiPolygon'
+      ? (f.geometry.coordinates as number[][][][])[0]![0]
+      : (f.geometry.coordinates as number[][][])[0]) ?? [];
+  return {
+    idu: f.properties.idu,
+    section: f.properties.section,
+    numero: f.properties.numero,
+    contenance: f.properties.contenance ?? null,
+    commune: f.properties.nom_com ?? '',
+    contour: anneau.map(([x, y]) => ({ lon: x!, lat: y! })),
+    methode
+  };
+}
+
+const geom = (g: object) => `geom=${encodeURIComponent(JSON.stringify(g))}`;
+
+/** Parcelle cadastrale qui contient le point, ou à défaut la plus proche dans un rayon d'une vingtaine de mètres. */
+export async function parcelleAuPoint(lat: number, lon: number): Promise<Parcelle | null> {
+  const sous = await parcelles(geom({ type: 'Point', coordinates: [lon, lat] }));
+  if (sous[0]) return versParcelle(sous[0], 'point');
+  // Point d'adresse sur la voie publique : on cherche les parcelles voisines et on garde la plus proche.
+  const dLat = 0.00018;
+  const dLon = 0.00026;
+  const autour = await parcelles(
+    geom({
+      type: 'Polygon',
+      coordinates: [
+        [
+          [lon - dLon, lat - dLat],
+          [lon + dLon, lat - dLat],
+          [lon + dLon, lat + dLat],
+          [lon - dLon, lat + dLat],
+          [lon - dLon, lat - dLat]
+        ]
+      ]
+    })
+  );
+  const proche = autour
+    .map((f) => versParcelle(f, 'proche'))
+    .map((p) => ({
+      p,
+      d: Math.min(...p.contour.map((q) => (q.lat - lat) ** 2 + ((q.lon - lon) * 0.7) ** 2))
+    }))
+    .sort((a, b) => a.d - b.d)[0];
+  return proche?.p ?? null;
+}
+
+/**
+ * Parcelle du bien à partir de son adresse exacte : géocodage Base Adresse Nationale, parcelle rattachée à l'adresse
+ * quand la BAN la connaît, sinon parcelle sous le point d'adresse (ou la plus proche).
+ */
+export async function parcelleDuBien(
+  adresse: string,
+  repli: Point | null
+): Promise<{ parcelle: Parcelle | null; point: Point | null }> {
+  let point = repli;
+  try {
+    const res = await fetch(
+      `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(adresse)}&limit=1`,
+      { next: { revalidate: UN_MOIS } }
+    );
+    const f = res.ok
+      ? (
+          (await res.json()) as {
+            features?: {
+              geometry: { coordinates: [number, number] };
+              properties: { id: string; type: string; score: number };
+            }[];
+          }
+        ).features?.[0]
+      : undefined;
+    if (f && f.properties.type === 'housenumber' && f.properties.score >= 0.6) {
+      point = { lon: f.geometry.coordinates[0], lat: f.geometry.coordinates[1] };
+      const lien = await fetch(
+        `https://plateforme.adresse.data.gouv.fr/lookup/${encodeURIComponent(f.properties.id)}`,
+        { next: { revalidate: UN_MOIS } }
+      );
+      const idu = lien.ok
+        ? ((await lien.json()) as { parcelles?: string[] }).parcelles?.[0]
+        : undefined;
+      if (idu && idu.length >= 14) {
+        // La section s'écrit sur deux caractères (« 0A » pour une section à une lettre) : on essaie les deux formes.
+        for (const section of [
+          ...new Set([idu.slice(8, 10), idu.slice(8, 10).replace(/^0/, '')])
+        ]) {
+          const params = new URLSearchParams({
+            code_insee: idu.slice(0, 5),
+            section,
+            numero: idu.slice(10)
+          });
+          if (idu.slice(5, 8) !== '000') params.set('com_abs', idu.slice(5, 8));
+          const trouvee = (await parcelles(params.toString())).find(
+            (x) => x.properties.idu === idu
+          );
+          if (trouvee) return { parcelle: versParcelle(trouvee, 'adresse'), point };
+        }
+      }
+    }
+  } catch {
+    // On retombe sur le point connu.
+  }
+  return { parcelle: point ? await parcelleAuPoint(point.lat, point.lon) : null, point };
 }

@@ -7,6 +7,7 @@ import { genererSynthese, type SyntheseBien } from '@/lib/ai/synthese';
 import { communesProches, localiser, ventesDvf } from './dvf';
 import {
   calculerValeurs,
+  densiteSecteur,
   moisDepuis,
   marcheSurSelection,
   selectionnerComparables,
@@ -200,14 +201,16 @@ export async function estimerBien(
       error: 'Renseignez la ville ou le code postal pour lancer l’estimation.'
     };
 
-  const communes = (await communesProches(loc, 8)).slice(0, 12);
-  // Ventes des 3 dernières années uniquement.
-  const ventes = (
-    await ventesDvf(
-      communes.map((c) => c.code),
-      3
-    )
-  ).filter((v) => moisDepuis(v.date) <= 36);
+  // Ventes des 3 dernières années uniquement. En secteur rural, la recherche peut s'étendre jusqu'à 20 km.
+  const charger = async (rayon: number, max: number) =>
+    (
+      await ventesDvf(
+        (await communesProches(loc, rayon)).slice(0, max).map((c) => c.code),
+        3
+      )
+    ).filter((v) => moisDepuis(v.date) <= 36);
+  let ventes = await charger(8, 12);
+  if (densiteSecteur(ventes, loc, bien.type) === 'rural') ventes = await charger(20, 30);
   const bienEstime = {
     type: bien.type,
     surface,
