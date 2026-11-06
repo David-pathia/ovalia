@@ -176,7 +176,7 @@ export async function genererAvisPdf(
         prenom: m.prenom,
         nom: m.nom,
         role: m.role,
-        photo: await lireImage(`equipe/${m.photo}`)
+        photo: await lireImage(m.photo)
       }))
     )
   ]);

@@ -13,12 +13,12 @@ export const RESEAU_LAFORET: { valeur: string; libelle: string; source?: string 
 export const SOURCES_RESEAU =
   'Chiffres du réseau Laforêt. N° 1 de la confiance : enquête annuelle IFOP. Satisfaction : enquête Laforêt réalisée par Qualitelis en 2023. Meilleure franchise : enquête annuelle Qualimétrie.';
 
-/** Équipe transaction présentée dans le dossier (photos dans assets/equipe). */
+/** Équipe transaction présentée dans le dossier (chemins relatifs à src/features/avis/assets). */
 export const EQUIPE_TRANSACTION = [
-  { prenom: 'Sabine', nom: 'Lorton', role: 'Directrice', photo: 'sabine.jpg' },
-  { prenom: 'Victoria', nom: 'Martins Justo', role: 'Directrice', photo: 'victoria.jpg' },
-  { prenom: 'Julien', nom: 'Ossedat', role: 'Négociateur', photo: 'julien.jpg' },
-  { prenom: 'Fabienne', nom: 'Defont', role: 'Agent commerciale', photo: 'fabienne.jpg' }
+  { prenom: 'Sabine', nom: 'Lorton', role: 'Directrice', photo: 'equipe/sabine.jpg' },
+  { prenom: 'Victoria', nom: 'Martins Justo', role: 'Directrice', photo: 'equipe/victoria.jpg' },
+  { prenom: 'Julien', nom: 'Ossedat', role: 'Négociateur', photo: 'conseiller.jpg' /* même photo qu'en couverture */ },
+  { prenom: 'Fabienne', nom: 'Defont', role: 'Agent commerciale', photo: 'equipe/fabienne.jpg' }
 ] as const;
 
 export const METIERS_AGENCE =
