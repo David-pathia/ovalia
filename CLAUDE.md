@@ -74,6 +74,17 @@ classif_projet `court_terme | moyen_terme | long_terme`. Champs Laforêt non mod
 - Nombres : remplacer l'espace fine U+202F (absente de la police) ; préciser `lineHeight` sur les textes > 10 pt.
 - Ne jamais committer de PDF ou de données de clients réels.
 
+## Prospects et rapprochements (src/features/prospects, src/lib/rapprochement)
+- Import du « tableau de pilotage » de Julien (onglet Prospection acheteur, `excel.ts` avec exceljs) depuis `/dashboard/prospects` :
+  analyse → aperçu (nouveaux, modifiés, inchangés, absents) → validation. Reconnaissance par nom normalisé (`cleNom`) puis
+  téléphone ; seules les lignes nouvelles ou modifiées passent par l'IA (`src/lib/ai/prospects.ts`, sans les noms) ;
+  communes résolues via geo.api.gouv.fr. Absents du fichier → archivés (jamais supprimés).
+- Contacts / projets importés : `source = 'tableau_pilotage'`, `synchro_laforet = false` (le trigger de la file Laforêt les ignore).
+  Migration `20261106120000_prospects_rapprochements.sql`. Ne jamais committer le fichier ni des données de prospects.
+- Score (`score.ts`, pur) : type, budget FAI (prix affiché, sinon net vendeur + 12,5 %), tolérance 5 % puis 10 % (au-delà : écarté),
+  secteur (communes ou zone en km), chambres et surface minimales, critères de confort. Rapprochements ≥ 50 enregistrés ;
+  statut du conseiller conservé. Recalcul : après import, estimation, modification d'un bien, bouton « Recalculer ».
+
 ## Sécurité
 - `src/proxy.ts` → `src/lib/supabase/session.ts` : toute route hors `/connexion` et `/auth` exige une session.
   Sans variables Supabase, tout est fermé.

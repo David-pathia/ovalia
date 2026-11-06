@@ -4,6 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { MODEL, anthropicConfigured, demanderTexte, extraireJson } from '@/lib/ai/client';
 import { genererAnnonce, type AnnonceIA } from '@/lib/ai/annonce';
 import { genererSynthese, type SyntheseBien } from '@/lib/ai/synthese';
+import { recalculerRapprochements } from '@/features/prospects/rapprochements';
 import { communesProches, localiser, ventesDvf } from './dvf';
 import {
   calculerValeurs,
@@ -370,6 +371,8 @@ export async function estimerBien(
   if (loc.precision === 'adresse' && bien.latitude === null) {
     await supabase.from('biens').update({ latitude: loc.lat, longitude: loc.lon }).eq('id', bienId);
   }
+  // Le prix ayant pu changer, les rapprochements du bien sont recalculés.
+  await recalculerRapprochements(supabase, { bienIds: [bienId] }).catch((e) => console.error('rapprochements.estimation', e));
   return { ok: true, analyseId: analyse.id as string };
 }
 

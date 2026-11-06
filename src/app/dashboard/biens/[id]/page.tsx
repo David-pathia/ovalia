@@ -10,6 +10,8 @@ import { EstimationPanel, type EstimationView } from '@/features/biens/component
 import type { EstimationDetails } from '@/lib/estimation/estimer';
 import { FinancementPanel } from '@/features/credit/components/financement-panel';
 import { PhotoPrincipale, type PhotoBien } from '@/features/photos/components/photo-principale';
+import { RapprochementsListe } from '@/features/prospects/components/rapprochements-liste';
+import { chargerRapprochements } from '@/features/prospects/data';
 import { retoucheIAConfiguree } from '@/lib/ai/image';
 import { lireParametresCredit } from '@/features/credit/data';
 
@@ -55,6 +57,7 @@ export default async function BienPage({ params }: Props) {
   const {
     data: { user }
   } = await supabase.auth.getUser();
+  const rapprochements = await chargerRapprochements(supabase, id).catch(() => []);
   const { data: images } = await supabase.from('bien_images').select('*').eq('bien_id', id).order('ordre').order('created_at');
   const chemins = (images ?? []).map((i) => i.storage_path as string);
   const { data: signees } = chemins.length ? await supabase.storage.from('biens').createSignedUrls(chemins, 60 * 60) : { data: [] };
@@ -131,6 +134,16 @@ export default async function BienPage({ params }: Props) {
           prixSource={estimation ? 'prix net vendeur de l’estimation' : bien.prix_affiche || bien.prix_bien ? 'prix de la fiche' : 'à saisir'}
           anneeConstruction={bien.annee_construction}
         />
+        <section className='bg-card min-w-0 rounded-2xl border p-4 sm:p-5'>
+          <h2 className='font-display text-[17px] font-semibold'>
+            Acquéreurs potentiels <span className='text-muted-foreground text-sm font-normal'>· {rapprochements.length}</span>
+          </h2>
+          <p className='text-muted-foreground mt-1 mb-3 text-xs'>
+            Prospects du tableau de pilotage dont la recherche correspond à ce bien. Budget comparé frais d’agence inclus (prix affiché, ou net vendeur
+            + 12,5 %), tolérance de 10 %.
+          </p>
+          <RapprochementsListe rapprochements={rapprochements} vide='Aucun acquéreur correspondant pour le moment. Importez le tableau de pilotage depuis la page Prospects.' />
+        </section>
       </div>
       <BienForm
         bienId={id}

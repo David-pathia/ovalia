@@ -16,8 +16,8 @@ export const navGroups: NavGroup[] = [
     label: 'Portefeuille',
     items: [
       { title: 'Biens', url: '/dashboard/biens', icon: 'bien', shortcut: ['b', 'b'], items: [] },
-      { title: 'Contacts', url: '/dashboard/contacts', icon: 'teams', shortcut: ['c', 'c'], label: 'Bientôt', items: [] },
-      { title: 'Rapprochements', url: '/dashboard/rapprochements', icon: 'rapprochement', shortcut: ['r', 'r'], label: 'Bientôt', items: [] }
+      { title: 'Prospects', url: '/dashboard/prospects', icon: 'teams', shortcut: ['p', 'p'], items: [] },
+      { title: 'Rapprochements', url: '/dashboard/rapprochements', icon: 'rapprochement', shortcut: ['r', 'r'], items: [] }
     ]
   },
   {

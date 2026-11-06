@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { BienUpdateSchema, PieceInputSchema, VendeurInputSchema, champsManquants, surfacePiece, type AVerifier } from './fields';
 import { estimerBien, recalculer, type EstimationDetails } from '@/lib/estimation/estimer';
+import { recalculerRapprochements } from '@/features/prospects/rapprochements';
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -114,6 +115,7 @@ export async function mettreAJourBien(bienId: string, input: unknown): Promise<A
     }
   }
 
+  await recalculerRapprochements(supabase, { bienIds: [bienId] }).catch((e) => console.error('rapprochements.bien', e));
   revalidatePath('/dashboard/biens');
   revalidatePath(`/dashboard/biens/${bienId}`);
   return { ok: true };
