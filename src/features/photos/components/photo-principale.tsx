@@ -30,7 +30,7 @@ function Comparateur({ avant, apres }: { avant: string; apres: string }) {
       {/* eslint-disable-next-line @next/next/no-img-element -- URL signée temporaire du stockage privé */}
       <img
         src={avant}
-        alt='Photo originale'
+        alt='Version originale'
         className='absolute inset-0 size-full object-cover'
         style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }}
       />
@@ -218,7 +218,7 @@ export function PhotoPrincipale({
             // eslint-disable-next-line @next/next/no-img-element -- URL signée temporaire du stockage privé
             <img
               src={vue.url}
-              alt='Photo principale'
+              alt='Vue principale du bien'
               className='aspect-[4/3] w-full rounded-xl object-cover'
             />
           ) : null}
