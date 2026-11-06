@@ -21,6 +21,17 @@ export type Conseiller = {
   titre: string;
   telephone: string;
   email: string;
+  /** Phrase de présentation affichée sous la photo, en couverture. */
+  accroche: string;
+};
+
+export const CONSEILLER_DEFAUT: Conseiller = {
+  nom: 'Julien Ossedat',
+  titre: 'Accompagnateur de projet de vie',
+  telephone: '06 48 94 54 77',
+  email: 'roanne@laforet.com',
+  accroche:
+    'Estimation gratuite et personnalisée sur le Roannais · Achat et vente · Confiance et proximité'
 };
 
 export const PAGES_AVIS = [

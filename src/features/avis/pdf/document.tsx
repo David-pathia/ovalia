@@ -180,6 +180,7 @@ export type AvisPdfData = {
     date: string | null;
   } | null;
   infos: InfosAnnonce;
+  photoConseiller: ImagePdf | null;
 };
 
 const annonceVisible = (d: AvisPdfData) =>
@@ -489,38 +490,68 @@ function Couverture({ d }: { d: AvisPdfData }) {
           </View>
         )}
 
-        <View
-          style={{
-            flexDirection: 'row',
-            justifyContent: 'center',
-            marginTop: 34,
-            gap: 16
-          }}
-        >
-          <View
-            style={{
-              alignItems: 'flex-end',
-              borderRightWidth: 1,
-              borderRightColor: C.ciel,
-              paddingRight: 16
-            }}
-          >
-            <Text style={{ fontWeight: 600, color: C.marine, fontSize: 10 }}>Votre agence</Text>
-            <Text style={{ fontSize: 8.5, color: C.marine }}>{avis.agence.nom}</Text>
-            <Text style={{ fontSize: 8.5, color: C.marine }}>{avis.agence.adresse}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 26, gap: 14 }}>
+          {d.photoConseiller && (
+            <Image
+              src={d.photoConseiller}
+              style={{
+                width: 78,
+                height: 78,
+                borderRadius: 39,
+                objectFit: 'cover',
+                borderWidth: 2.5,
+                borderColor: C.ciel
+              }}
+            />
+          )}
+          <View style={{ flex: 1 }}>
             <Text
-              style={{ fontSize: 8.5, color: C.marine }}
-            >{`${avis.agence.codePostal} ${avis.agence.ville.toUpperCase()}`}</Text>
-            <Text style={{ fontSize: 8.5, color: C.marine }}>{avis.agence.telephone}</Text>
-            <Text style={{ fontSize: 8.5, color: C.marine }}>{avis.agence.email}</Text>
-          </View>
-          <View>
-            <Text style={{ fontWeight: 600, color: C.ciel, fontSize: 10 }}>Votre conseiller</Text>
-            {avis.conseiller.nom.split(' ').map((p, i) => (
-              <Text key={i} style={{ fontSize: 8.5, color: C.ciel }}>
-                {i === avis.conseiller.nom.split(' ').length - 1 ? p.toUpperCase() : p}
+              style={{
+                fontSize: 7.5,
+                fontWeight: 600,
+                color: C.ciel,
+                letterSpacing: 1,
+                lineHeight: 1.3
+              }}
+            >
+              VOTRE CONSEILLER
+            </Text>
+            <Text style={{ fontSize: 14, fontWeight: 700, color: C.marine, lineHeight: 1.25 }}>
+              {avis.conseiller.nom}
+            </Text>
+            {avis.conseiller.titre ? (
+              <Text style={{ fontSize: 9, fontWeight: 600, color: C.bleu, lineHeight: 1.3 }}>
+                {avis.conseiller.titre}
               </Text>
-            ))}
+            ) : null}
+            {avis.conseiller.accroche ? (
+              <Text style={{ fontSize: 7.5, color: C.doux, lineHeight: 1.4, marginTop: 3 }}>
+                {avis.conseiller.accroche}
+              </Text>
+            ) : null}
+            <Text
+              style={{
+                fontSize: 10.5,
+                fontWeight: 700,
+                color: C.marine,
+                lineHeight: 1.3,
+                marginTop: 4
+              }}
+            >
+              {avis.conseiller.telephone}
+            </Text>
+          </View>
+          <View
+            style={{ width: 128, borderLeftWidth: 1, borderLeftColor: C.ciel, paddingLeft: 12 }}
+          >
+            <Text style={{ fontWeight: 600, color: C.marine, fontSize: 9.5 }}>Votre agence</Text>
+            <Text style={{ fontSize: 8, color: C.marine }}>{avis.agence.nom}</Text>
+            <Text style={{ fontSize: 8, color: C.marine }}>{avis.agence.adresse}</Text>
+            <Text
+              style={{ fontSize: 8, color: C.marine }}
+            >{`${avis.agence.codePostal} ${avis.agence.ville.toUpperCase()}`}</Text>
+            <Text style={{ fontSize: 8, color: C.marine }}>{avis.agence.telephone}</Text>
+            <Text style={{ fontSize: 8, color: C.marine }}>{avis.agence.email}</Text>
           </View>
         </View>
       </View>

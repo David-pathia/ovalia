@@ -1,9 +1,10 @@
 import 'server-only';
-import type { SupabaseClient, User } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { EstimationDetails } from '@/lib/estimation/estimer';
 import { TYPES_BIEN, libelle } from '@/lib/biens/options';
 import {
   AGENCE_DEFAUT,
+  CONSEILLER_DEFAUT,
   ETAPES_DEFAUT,
   MAX_COMPARABLES_AVIS,
   arrondiPrix,
@@ -164,8 +165,8 @@ function annonceParDefaut(
 /** Avis par défaut : repris du dernier avis du bien s'il existe, sinon construit depuis l'estimation. */
 export function avisParDefaut(
   donnees: BienPourAvis,
-  user: User,
-  precedentAgence?: AvisDetails['agence']
+  precedentAgence?: AvisDetails['agence'],
+  precedentConseiller?: AvisDetails['conseiller']
 ): AvisDetails | null {
   const { estimation, vendeur, avis, photos } = donnees;
   if (!estimation) return null;
@@ -180,12 +181,9 @@ export function avisParDefaut(
       nom: vendeur?.nom ?? '',
       prenom: vendeur?.prenom ?? ''
     },
-    conseiller: {
-      nom: (user.user_metadata?.full_name as string | undefined) ?? '',
-      titre: 'Négociateur',
-      telephone: AGENCE_DEFAUT.telephone,
-      email: AGENCE_DEFAUT.email
-    },
+    // Le conseiller est repris d'un avis à l'autre ; les avis antérieurs à la photo de couverture repartent du profil par défaut.
+    conseiller:
+      precedentConseiller?.accroche !== undefined ? precedentConseiller : CONSEILLER_DEFAUT,
     agence: precedentAgence ?? AGENCE_DEFAUT,
     prix: {
       basse: arrondiPrix(r.valeurBasse),
@@ -227,7 +225,9 @@ export function avisParDefaut(
     ...avis.details,
     pages: { ...neuf.pages, ...avis.details.pages },
     annonce: avis.details.annonce?.texte.trim() ? avis.details.annonce : neuf.annonce,
-    etapes: avis.details.etapes ?? neuf.etapes
+    etapes: avis.details.etapes ?? neuf.etapes,
+    conseiller:
+      avis.details.conseiller.accroche === undefined ? neuf.conseiller : avis.details.conseiller
   };
   if (garde.estimationId === estimation.id) return garde;
   return {

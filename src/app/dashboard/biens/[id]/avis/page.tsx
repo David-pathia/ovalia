@@ -27,8 +27,8 @@ export default async function AvisPage({ params }: { params: Promise<{ id: strin
     .eq('type', 'avis_valeur')
     .order('created_at', { ascending: false })
     .limit(1);
-  const agence = (dernier?.[0]?.details as AvisDetails | undefined)?.agence;
-  const initial = avisParDefaut(donnees, user, agence);
+  const precedent = dernier?.[0]?.details as AvisDetails | undefined;
+  const initial = avisParDefaut(donnees, precedent?.agence, precedent?.conseiller);
   const { bien, estimation } = donnees;
 
   return (

@@ -3,7 +3,10 @@ import type { NextConfig } from 'next';
 const nextConfig: NextConfig = {
   // Polices du PDF d'avis de valeur, lues sur le disque au moment du rendu.
   outputFileTracingIncludes: {
-    '/dashboard/biens/[id]/avis/pdf': ['./src/features/avis/fonts/**']
+    '/dashboard/biens/[id]/avis/pdf': [
+      './src/features/avis/fonts/**',
+      './src/features/avis/assets/**'
+    ]
   },
   serverExternalPackages: ['@react-pdf/renderer'],
   compiler: {

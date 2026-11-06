@@ -23,7 +23,8 @@ const AvisSchema = z.object({
     nom: texte(120),
     titre: texte(80),
     telephone: texte(40),
-    email: texte(120)
+    email: texte(120),
+    accroche: texte(300)
   }),
   agence: z.object({
     nom: texte(120),

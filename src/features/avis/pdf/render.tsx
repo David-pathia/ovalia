@@ -1,4 +1,6 @@
 import 'server-only';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import { renderToBuffer } from '@react-pdf/renderer';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { analyseMarche } from '@/features/marche/core';
@@ -26,6 +28,18 @@ async function population(codeInsee: string) {
     });
     if (!res.ok) return null;
     return ((await res.json()) as { population?: number }).population ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// Photo du conseiller pour la couverture (fichier du projet, tracé par next.config).
+async function photoConseiller(): Promise<ImagePdf | null> {
+  try {
+    return {
+      data: await readFile(path.join(process.cwd(), 'src/features/avis/assets/conseiller.jpg')),
+      format: 'jpg'
+    };
   } catch {
     return null;
   }
@@ -143,7 +157,8 @@ export async function genererAvisPdf(
       bien: imagesBien.filter((x): x is ImagePdf => x !== null)
     },
     credit,
-    infos: infosAnnonce(bien)
+    infos: infosAnnonce(bien),
+    photoConseiller: await photoConseiller()
   };
 
   const pdf = await renderToBuffer(<AvisDocument d={data} />);

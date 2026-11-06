@@ -46,6 +46,8 @@ classif_projet `court_terme | moyen_terme | long_terme`. Champs Laforêt non mod
   rien d'inventé, ni prix ni motif de vente). Première version produite avec l'estimation (`details.annonce`), réécriture depuis
   l'éditeur (`redigerAnnonce`). Prix et mentions légales (honoraires, DPE et dépenses d'énergie, copropriété, Géorisques)
   calculés par `mentionsAnnonce` (types.ts), jamais par le modèle. Puis la frise « Les prochaines étapes » (`etapes`, modifiables).
+- Couverture : photo du conseiller (`src/features/avis/assets/conseiller.jpg`, tracée par next.config) + nom, fonction,
+  présentation (`conseiller.accroche`) et portable ; conseiller par défaut `CONSEILLER_DEFAUT`, puis repris du dernier avis.
 - Nombres : remplacer l'espace fine U+202F (absente de la police) ; préciser `lineHeight` sur les textes > 10 pt.
 - Ne jamais committer de PDF ou de données de clients réels.
 

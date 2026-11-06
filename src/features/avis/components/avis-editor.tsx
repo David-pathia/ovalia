@@ -799,6 +799,18 @@ export function AvisEditor({
                 />
               </Champ>
             ))}
+            <Champ
+              id='c-accroche'
+              label='Présentation (couverture, sous la photo)'
+              className='col-span-2'
+            >
+              <Textarea
+                id='c-accroche'
+                rows={2}
+                value={avis.conseiller.accroche}
+                onChange={(e) => majObj('conseiller', 'accroche', e.target.value)}
+              />
+            </Champ>
           </div>
         </Bloc>
 
