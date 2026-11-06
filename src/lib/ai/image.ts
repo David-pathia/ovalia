@@ -4,7 +4,7 @@ import 'server-only';
 // API Chat Completions avec la photo jointe et `modalities: ['image', 'text']`, image renvoyée dans `message.images`.
 // Consignes strictes de fidélité : lumière, ciel, pelouse existante et petits objets mobiles uniquement.
 
-const MODELE_RETOUCHE = 'google/gemini-3.1-flash-image-preview';
+const MODELE_RETOUCHE = 'google/gemini-3.1-flash-image';
 const GATEWAY = 'https://ai-gateway.vercel.sh/v1';
 
 const CONSIGNES = `Professional real-estate photo retouching. The result must remain a faithful, honest photograph of the SAME property.

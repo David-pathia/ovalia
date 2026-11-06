@@ -68,7 +68,7 @@ classif_projet `court_terme | moyen_terme | long_terme`. Champs Laforêt non mod
 - Photo principale (fiche du bien, `src/features/photos`) : couverture du dossier et tête de l'annonce. Colonnes
   `bien_images.principale / retouche ('fidele'|'ia') / originale_id` (migration 20261106100000). L'originale est toujours gardée.
   Retouche fidèle (`retouche.ts`, navigateur) : balance des blancs, niveaux, ombres, contraste, vibrance, verts ravivés.
-  Retouche IA (`src/lib/ai/image.ts`) : Vercel AI Gateway `/v1/chat/completions` + `modalities`, modèle `google/gemini-3.1-flash-image-preview`,
+  Retouche IA (`src/lib/ai/image.ts`) : Vercel AI Gateway `/v1/chat/completions` + `modalities`, modèle `google/gemini-3.1-flash-image`,
   clé `AI_GATEWAY_API_KEY` ; consignes strictes (ciel, lumière, pelouse existante, petits objets mobiles ; rien d'ajouté au
   bien ni à la végétation). Mention « Photo retouchée (lumière, ciel) » en couverture et sur l'annonce si version IA.
 - Nombres : remplacer l'espace fine U+202F (absente de la police) ; préciser `lineHeight` sur les textes > 10 pt.
