@@ -223,6 +223,7 @@ export async function genererAvisPdf(
     carteComparables: carteComp && carteComp.reperes.length > 1 ? carteComp : null,
     photos: {
       couverture: couverture ? await telechargerImage(supabase, couverture.path) : null,
+      couvertureRetouchee: couverture?.retouche === 'ia',
       bien: imagesBien.filter((x): x is ImagePdf => x !== null)
     },
     credit,

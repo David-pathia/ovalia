@@ -11,6 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Icons } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
+import { preparerPhoto, retoucheFidele } from '@/features/photos/retouche';
 import type { ComparableResume } from '@/lib/estimation/estimer';
 import { TONS_ANNONCE, type TonAnnonce } from '@/lib/ai/annonce-tons';
 import {
@@ -36,7 +37,12 @@ import {
   type InfosAnnonce
 } from '../types';
 
-export type PhotoEditeur = { id: string; url: string | null };
+export type PhotoEditeur = {
+  id: string;
+  url: string | null;
+  principale?: boolean;
+  retouche?: 'fidele' | 'ia' | null;
+};
 
 const eur = (n: number) => `${Math.round(n).toLocaleString('fr-FR')} €`;
 const dateFr = (iso: string) =>
@@ -81,70 +87,6 @@ function Champ({
       </Label>
       {children}
     </div>
-  );
-}
-
-/**
- * Retouche légère et fidèle : niveaux automatiques, contraste, couleurs un peu plus vives et verts ravivés (pelouse).
- * Aucun élément n'est ajouté ni retiré de l'image.
- */
-async function ameliorerPhoto(url: string): Promise<Blob> {
-  const image = await createImageBitmap(await (await fetch(url)).blob());
-  const echelle = Math.min(1, 2000 / Math.max(image.width, image.height));
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.round(image.width * echelle);
-  canvas.height = Math.round(image.height * echelle);
-  const ctx = canvas.getContext('2d')!;
-  ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-  const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const px = img.data;
-  const hist: number[] = Array.from({ length: 256 }, () => 0);
-  for (let i = 0; i < px.length; i += 4)
-    hist[Math.round(0.299 * px[i]! + 0.587 * px[i + 1]! + 0.114 * px[i + 2]!)]!++;
-  const total = px.length / 4;
-  const centile = (q: number) => {
-    let cumul = 0;
-    for (let v = 0; v < 256; v++) if ((cumul += hist[v]!) >= total * q) return v;
-    return 255;
-  };
-  // Étirement limité pour ne pas brûler les blancs ni boucher les noirs.
-  const bas = Math.min(centile(0.005), 40);
-  const haut = Math.max(centile(0.995), 215);
-  const etire = 255 / Math.max(1, haut - bas);
-  for (let i = 0; i < px.length; i += 4) {
-    let r = (px[i]! - bas) * etire;
-    let g = (px[i + 1]! - bas) * etire;
-    let b = (px[i + 2]! - bas) * etire;
-    // Contraste doux autour du gris moyen.
-    r = 128 + (r - 128) * 1.06;
-    g = 128 + (g - 128) * 1.06;
-    b = 128 + (b - 128) * 1.06;
-    const gris = 0.299 * r + 0.587 * g + 0.114 * b;
-    const vert = g > r * 1.04 && g > b * 1.04;
-    const sat = vert ? 1.28 : 1.1;
-    r = gris + (r - gris) * sat;
-    g = gris + (g - gris) * sat * (vert ? 1.03 : 1);
-    b = gris + (b - gris) * sat;
-    px[i] = Math.max(0, Math.min(255, r));
-    px[i + 1] = Math.max(0, Math.min(255, g));
-    px[i + 2] = Math.max(0, Math.min(255, b));
-  }
-  ctx.putImageData(img, 0, 0);
-  return new Promise((ok, ko) =>
-    canvas.toBlob((b) => (b ? ok(b) : ko(new Error('conversion'))), 'image/jpeg', 0.9)
-  );
-}
-
-/** Réduit la photo (2 000 px max) et la convertit en JPEG : le PDF n'accepte que JPEG et PNG, et les photos de téléphone sont lourdes. */
-async function preparerPhoto(fichier: File): Promise<Blob> {
-  const image = await createImageBitmap(fichier);
-  const echelle = Math.min(1, 2000 / Math.max(image.width, image.height));
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.round(image.width * echelle);
-  canvas.height = Math.round(image.height * echelle);
-  canvas.getContext('2d')!.drawImage(image, 0, 0, canvas.width, canvas.height);
-  return new Promise((ok, ko) =>
-    canvas.toBlob((b) => (b ? ok(b) : ko(new Error('conversion'))), 'image/jpeg', 0.85)
   );
 }
 
@@ -309,7 +251,7 @@ export function AvisEditor({
     setRetouche(photo.id);
     const supabase = createClient();
     try {
-      const blob = await ameliorerPhoto(photo.url);
+      const blob = await retoucheFidele(await (await fetch(photo.url)).blob());
       const chemin = `${ownerId}/${bienId}/${crypto.randomUUID()}.jpg`;
       const { error } = await supabase.storage
         .from('biens')
@@ -881,6 +823,20 @@ export function AvisEditor({
                     <div className='aspect-[4/3]' />
                   )}
                   <figcaption className='flex flex-wrap gap-1 p-2'>
+                    {(p.principale || p.retouche) && (
+                      <span className='text-muted-foreground w-full text-[11px]'>
+                        {[
+                          p.principale ? 'Photo principale' : null,
+                          p.retouche === 'ia'
+                            ? 'retouche IA'
+                            : p.retouche === 'fidele'
+                              ? 'retouche fidèle'
+                              : null
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </span>
+                    )}
                     <Button
                       size='xs'
                       variant={couverture ? 'default' : 'outline'}

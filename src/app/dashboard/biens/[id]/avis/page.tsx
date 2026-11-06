@@ -68,7 +68,9 @@ export default async function AvisPage({ params }: { params: Promise<{ id: strin
           comparables={estimation.details.comparables}
           photosInitiales={donnees.photos.map((p) => ({
             id: p.id,
-            url: p.url
+            url: p.url,
+            principale: p.principale,
+            retouche: p.retouche
           }))}
           suggestion={{
             basse: estimation.details.resultat.valeurBasse,

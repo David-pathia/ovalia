@@ -65,8 +65,12 @@ classif_projet `court_terme | moyen_terme | long_terme`. Champs Laforêt non mod
   2026, référence ministère 2013, prix constatés 2026, aides 2026). Cible acquéreur : 2-3 profils avec « notre approche ».
 - Synthèse IA (`src/lib/ai/synthese.ts`) : points forts, vigilance, cible acquéreur ; produite avec l'estimation (`details.synthese`)
   ou depuis l'éditeur (`redigerSynthese`). Comparables DVF sur 3 ans uniquement.
-- Retouche photo dans l'éditeur (« Améliorer ») : niveaux, contraste, couleurs, verts ravivés, côté navigateur ; jamais
-  de retouche générative (le bien ne doit pas être modifié). L'originale est conservée.
+- Photo principale (fiche du bien, `src/features/photos`) : couverture du dossier et tête de l'annonce. Colonnes
+  `bien_images.principale / retouche ('fidele'|'ia') / originale_id` (migration 20261106100000). L'originale est toujours gardée.
+  Retouche fidèle (`retouche.ts`, navigateur) : balance des blancs, niveaux, ombres, contraste, vibrance, verts ravivés.
+  Retouche IA (`src/lib/ai/image.ts`) : Vercel AI Gateway `/v1/images/edits`, modèle `google/gemini-3.1-flash-image`,
+  clé `AI_GATEWAY_API_KEY` ; consignes strictes (ciel, lumière, pelouse existante, petits objets mobiles ; rien d'ajouté au
+  bien ni à la végétation). Mention « Photo retouchée (lumière, ciel) » en couverture et sur l'annonce si version IA.
 - Nombres : remplacer l'espace fine U+202F (absente de la police) ; préciser `lineHeight` sur les textes > 10 pt.
 - Ne jamais committer de PDF ou de données de clients réels.
 

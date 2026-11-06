@@ -140,15 +140,29 @@ function Couverture({ d }: { d: AvisPdfData }) {
         </View>
 
         {d.photos.couverture ? (
-          <Image
-            src={d.photos.couverture}
-            style={{
-              marginTop: 26,
-              height: 270,
-              borderRadius: 14,
-              objectFit: 'cover'
-            }}
-          />
+          <View style={{ marginTop: 26, position: 'relative' }}>
+            <Image
+              src={d.photos.couverture}
+              style={{ height: 270, borderRadius: 14, objectFit: 'cover' }}
+            />
+            {d.photos.couverture && d.photos.couvertureRetouchee ? (
+              <Text
+                style={{
+                  position: 'absolute',
+                  left: 8,
+                  bottom: 6,
+                  fontSize: 6,
+                  color: C.texte,
+                  backgroundColor: '#ffffffd9',
+                  paddingHorizontal: 4,
+                  paddingVertical: 1,
+                  borderRadius: 3
+                }}
+              >
+                Photo retouchée (lumière, ciel)
+              </Text>
+            ) : null}
+          </View>
         ) : (
           <View
             style={{
@@ -922,6 +936,23 @@ function Annonce({ d }: { d: AvisPdfData }) {
             PROJET D’ANNONCE · NON PUBLIÉE
           </Text>
         </View>
+        {d.photos.couverture && d.photos.couvertureRetouchee ? (
+          <Text
+            style={{
+              position: 'absolute',
+              left: 8,
+              bottom: 6,
+              fontSize: 6,
+              color: C.texte,
+              backgroundColor: '#ffffffd9',
+              paddingHorizontal: 4,
+              paddingVertical: 1,
+              borderRadius: 3
+            }}
+          >
+            Photo retouchée (lumière, ciel)
+          </Text>
+        ) : null}
       </View>
       {vignettes.length > 0 && (
         <View style={{ flexDirection: 'row', gap: 6, marginTop: 6 }}>

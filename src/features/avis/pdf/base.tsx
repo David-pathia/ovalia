@@ -163,7 +163,8 @@ export type AvisPdfData = {
   };
   comparables: ComparablePdf[];
   carteComparables: CarteStatique | null;
-  photos: { couverture: ImagePdf | null; bien: ImagePdf[] };
+  /** couvertureRetouchee : photo principale retouchée par IA, signalée dans le dossier. */
+  photos: { couverture: ImagePdf | null; bien: ImagePdf[]; couvertureRetouchee?: boolean };
   cadastre: {
     carte: CarteStatique | null;
     environnement: CarteStatique | null;

@@ -9,6 +9,8 @@ import { BienForm, type Analyse } from '@/features/biens/components/bien-form';
 import { EstimationPanel, type EstimationView } from '@/features/biens/components/estimation-panel';
 import type { EstimationDetails } from '@/lib/estimation/estimer';
 import { FinancementPanel } from '@/features/credit/components/financement-panel';
+import { PhotoPrincipale, type PhotoBien } from '@/features/photos/components/photo-principale';
+import { retoucheIAConfiguree } from '@/lib/ai/image';
 import { lireParametresCredit } from '@/features/credit/data';
 
 export const metadata: Metadata = { title: 'Fiche bien' };
@@ -48,6 +50,21 @@ export default async function BienPage({ params }: Props) {
       .limit(1)
   ]);
   if (!bien) notFound();
+
+  // Photos du bien (select('*') : tolère l'absence des colonnes tant que la migration « photo principale » n'est pas passée).
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
+  const { data: images } = await supabase.from('bien_images').select('*').eq('bien_id', id).order('ordre').order('created_at');
+  const chemins = (images ?? []).map((i) => i.storage_path as string);
+  const { data: signees } = chemins.length ? await supabase.storage.from('biens').createSignedUrls(chemins, 60 * 60) : { data: [] };
+  const photos: PhotoBien[] = (images ?? []).map((i) => ({
+    id: i.id as string,
+    url: signees?.find((x) => x.path === i.storage_path)?.signedUrl ?? null,
+    principale: Boolean(i.principale),
+    retouche: (i.retouche as PhotoBien['retouche']) ?? null,
+    originaleId: (i.originale_id as string | null) ?? null
+  }));
 
   const initial: BienValues = Object.fromEntries(BIEN_FIELDS.map((f) => [f.key, bien[f.key] ?? (f.kind === 'list' ? [] : f.kind === 'bool' ? false : null)]));
   // Les colonnes numeric arrivent parfois en texte depuis PostgREST.
@@ -105,6 +122,7 @@ export default async function BienPage({ params }: Props) {
         </p>
       </header>
       <div className='mb-5 flex flex-col gap-5'>
+        {user && <PhotoPrincipale key={photos.map((p) => p.id).join()} bienId={id} ownerId={user.id} photosInitiales={photos} iaDisponible={retoucheIAConfiguree()} />}
         <EstimationPanel key={estimation?.id ?? 'aucune'} bienId={id} estimation={estimation} disabledReason={disabledReason} />
         <FinancementPanel
           key={`fin-${estimation?.id ?? 'aucune'}`}

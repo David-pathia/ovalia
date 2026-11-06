@@ -23,7 +23,14 @@ export type EstimationAvis = {
   argumentaire: string | null;
   details: EstimationDetails;
 };
-export type PhotoAvis = { id: string; path: string; url: string | null };
+export type PhotoAvis = {
+  id: string;
+  path: string;
+  url: string | null;
+  principale: boolean;
+  retouche: 'fidele' | 'ia' | null;
+  originaleId: string | null;
+};
 export type VendeurAvis = {
   civilite: string | null;
   nom: string;
@@ -71,7 +78,7 @@ export async function chargerBienPourAvis(supabase: SupabaseClient, bienId: stri
       .limit(1),
     supabase
       .from('bien_images')
-      .select('id, storage_path')
+      .select('*')
       .eq('bien_id', bienId)
       .eq('confidentielle', false)
       .order('ordre')
@@ -95,7 +102,10 @@ export async function chargerBienPourAvis(supabase: SupabaseClient, bienId: stri
   const photos: PhotoAvis[] = (images ?? []).map((i) => ({
     id: i.id,
     path: i.storage_path,
-    url: signees?.find((s) => s.path === i.storage_path)?.signedUrl ?? null
+    url: signees?.find((s) => s.path === i.storage_path)?.signedUrl ?? null,
+    principale: Boolean(i.principale),
+    retouche: (i.retouche as PhotoAvis['retouche']) ?? null,
+    originaleId: (i.originale_id as string | null) ?? null
   }));
 
   return {
@@ -172,6 +182,14 @@ export function avisParDefaut(
   precedentConseiller?: AvisDetails['conseiller']
 ): AvisDetails | null {
   const { estimation, vendeur, avis, photos } = donnees;
+  // La photo principale du bien (fiche du bien) fait la couverture et la tête de l'annonce ; ses autres versions sont écartées.
+  const principale = photos.find((p) => p.principale);
+  const origine = principale ? (principale.originaleId ?? principale.id) : null;
+  const famille = new Set(
+    photos
+      .filter((p) => origine && (p.id === origine || p.originaleId === origine))
+      .map((p) => p.id)
+  );
   if (!estimation) return null;
   const fourchette = fourchetteNetVendeur(estimation.details);
   const tri = [...estimation.details.comparables].sort((a, b) => b.poids - a.poids);
@@ -202,8 +220,13 @@ export function avisParDefaut(
     },
     comparables: tri.slice(0, 8).map(cleComparable),
     photos: {
-      couverture: photos[0]?.id ?? null,
-      bien: photos.slice(1, 5).map((p) => p.id)
+      couverture: principale?.id ?? photos[0]?.id ?? null,
+      bien: photos
+        .filter(
+          (p) => p.id !== (principale?.id ?? photos[0]?.id) && !famille.has(p.id) && !p.retouche
+        )
+        .slice(0, 4)
+        .map((p) => p.id)
     },
     pages: Object.fromEntries(PAGES_AVIS.map(([k]) => [k, true])) as AvisDetails['pages'],
     annonce: annonceParDefaut(donnees.bien, estimation.details.annonce),
@@ -231,6 +254,12 @@ export function avisParDefaut(
   garde.prix = { ...garde.prix, conseille: prixNetVendeur(estimation.details), tauxHonoraires: 0 };
   if (garde.prix.conseille < garde.prix.basse || garde.prix.conseille > garde.prix.haute) {
     garde.prix = { ...garde.prix, basse: neuf.prix.basse, haute: neuf.prix.haute };
+  }
+  if (principale) {
+    garde.photos = {
+      couverture: principale.id,
+      bien: garde.photos.bien.filter((id) => !famille.has(id))
+    };
   }
   if (garde.estimationId === estimation.id) return garde;
   return {
