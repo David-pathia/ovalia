@@ -3,7 +3,8 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
-import { MAX_COMPARABLES_AVIS, PAGES_AVIS } from './types';
+import { genererAnnonce, type AnnonceIA } from '@/lib/ai/annonce';
+import { MAX_COMPARABLES_AVIS, MAX_ETAPES, PAGES_AVIS } from './types';
 
 export type AvisActionResult = { ok: true; avisId: string } | { ok: false; error: string };
 
@@ -13,8 +14,17 @@ const AvisSchema = z.object({
   version: z.literal(1),
   estimationId: z.uuid(),
   dateAvis: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  destinataire: z.object({ civilite: texte(20), nom: texte(120), prenom: texte(120) }),
-  conseiller: z.object({ nom: texte(120), titre: texte(80), telephone: texte(40), email: texte(120) }),
+  destinataire: z.object({
+    civilite: texte(20),
+    nom: texte(120),
+    prenom: texte(120)
+  }),
+  conseiller: z.object({
+    nom: texte(120),
+    titre: texte(80),
+    telephone: texte(40),
+    email: texte(120)
+  }),
   agence: z.object({
     nom: texte(120),
     adresse: texte(200),
@@ -33,11 +43,36 @@ const AvisSchema = z.object({
       conseille: z.number().int().positive(),
       tauxHonoraires: z.number().min(0).max(0.3)
     })
-    .refine((p) => p.basse <= p.haute, { message: 'La valeur basse doit être inférieure à la valeur haute.' }),
-  textes: z.object({ introduction: texte(3000), bien: texte(4000), conclusion: texte(3000) }),
+    .refine((p) => p.basse <= p.haute, {
+      message: 'La valeur basse doit être inférieure à la valeur haute.'
+    }),
+  textes: z.object({
+    introduction: texte(3000),
+    bien: texte(4000),
+    conclusion: texte(3000)
+  }),
   comparables: z.array(z.string().max(80)).max(MAX_COMPARABLES_AVIS),
-  photos: z.object({ couverture: z.uuid().nullable(), bien: z.array(z.uuid()).max(4) }),
-  pages: z.object(Object.fromEntries(PAGES_AVIS.map(([k]) => [k, z.boolean()])) as Record<(typeof PAGES_AVIS)[number][0], z.ZodBoolean>)
+  photos: z.object({
+    couverture: z.uuid().nullable(),
+    bien: z.array(z.uuid()).max(4)
+  }),
+  pages: z.object(
+    Object.fromEntries(PAGES_AVIS.map(([k]) => [k, z.boolean()])) as Record<
+      (typeof PAGES_AVIS)[number][0],
+      z.ZodBoolean
+    >
+  ),
+  annonce: z.object({
+    ton: z.enum(['sobre', 'chaleureux', 'prestige']),
+    titre: texte(120),
+    texte: texte(5000),
+    pointsForts: z.array(texte(120)).max(6),
+    honoraires: z.enum(['vendeur', 'acquereur']),
+    depensesEnergie: texte(200)
+  }),
+  etapes: z
+    .array(z.object({ titre: texte(80), delai: texte(40), texte: texte(400) }))
+    .max(MAX_ETAPES)
 });
 
 async function session() {
@@ -55,7 +90,10 @@ export async function enregistrerAvis(bienId: string, input: unknown): Promise<A
   const parsed = AvisSchema.safeParse(input);
   if (!parsed.success) {
     const i = parsed.error.issues[0];
-    return { ok: false, error: `${i?.message ?? 'Valeur invalide'}${i?.path.length ? ` (${i.path.join(' › ')})` : ''}` };
+    return {
+      ok: false,
+      error: `${i?.message ?? 'Valeur invalide'}${i?.path.length ? ` (${i.path.join(' › ')})` : ''}`
+    };
   }
   const details = parsed.data;
 
@@ -75,10 +113,20 @@ export async function enregistrerAvis(bienId: string, input: unknown): Promise<A
   };
   // valeur_probable reste nulle : seules les estimations la renseignent.
   const { data, error } = existant?.[0]
-    ? await supabase.from('bien_analyses').update(ligne).eq('id', existant[0].id).select('id').single()
+    ? await supabase
+        .from('bien_analyses')
+        .update(ligne)
+        .eq('id', existant[0].id)
+        .select('id')
+        .single()
     : await supabase
         .from('bien_analyses')
-        .insert({ ...ligne, bien_id: bienId, type: 'avis_valeur', modele: 'avis' })
+        .insert({
+          ...ligne,
+          bien_id: bienId,
+          type: 'avis_valeur',
+          modele: 'avis'
+        })
         .select('id')
         .single();
   if (error || !data) {
@@ -89,11 +137,18 @@ export async function enregistrerAvis(bienId: string, input: unknown): Promise<A
   return { ok: true, avisId: data.id as string };
 }
 
-export async function ajouterPhoto(bienId: string, storagePath: string): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+export async function ajouterPhoto(
+  bienId: string,
+  storagePath: string
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
   const { supabase, user } = await session();
   if (!user) return { ok: false, error: 'Session expirée : reconnectez-vous.' };
-  if (!storagePath.startsWith(`${user.id}/${bienId}/`)) return { ok: false, error: 'Emplacement de photo invalide.' };
-  const { count } = await supabase.from('bien_images').select('id', { count: 'exact', head: true }).eq('bien_id', bienId);
+  if (!storagePath.startsWith(`${user.id}/${bienId}/`))
+    return { ok: false, error: 'Emplacement de photo invalide.' };
+  const { count } = await supabase
+    .from('bien_images')
+    .select('id', { count: 'exact', head: true })
+    .eq('bien_id', bienId);
   const { data, error } = await supabase
     .from('bien_images')
     .insert({ bien_id: bienId, storage_path: storagePath, ordre: count ?? 0 })
@@ -107,14 +162,47 @@ export async function ajouterPhoto(bienId: string, storagePath: string): Promise
   return { ok: true, id: data.id as string };
 }
 
-export async function supprimerPhoto(photoId: string): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function supprimerPhoto(
+  photoId: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
   const { supabase, user } = await session();
   if (!user) return { ok: false, error: 'Session expirée : reconnectez-vous.' };
-  const { data } = await supabase.from('bien_images').select('storage_path, bien_id').eq('id', photoId).single();
+  const { data } = await supabase
+    .from('bien_images')
+    .select('storage_path, bien_id')
+    .eq('id', photoId)
+    .single();
   if (!data) return { ok: false, error: 'Photo introuvable.' };
   await supabase.storage.from('biens').remove([data.storage_path]);
   const { error } = await supabase.from('bien_images').delete().eq('id', photoId);
   if (error) return { ok: false, error: 'La photo n’a pas pu être supprimée.' };
   revalidatePath(`/dashboard/biens/${data.bien_id}/avis`);
   return { ok: true };
+}
+
+const TonSchema = z.enum(['sobre', 'chaleureux', 'prestige']);
+
+/** Rédige (ou réécrit dans un autre ton) le projet d'annonce à partir de la fiche du bien. */
+export async function redigerAnnonce(
+  bienId: string,
+  ton: unknown
+): Promise<{ ok: true; annonce: AnnonceIA } | { ok: false; error: string }> {
+  const { supabase, user } = await session();
+  if (!user) return { ok: false, error: 'Session expirée : reconnectez-vous.' };
+  const t = TonSchema.safeParse(ton);
+  if (!t.success) return { ok: false, error: 'Ton inconnu.' };
+  const [{ data: bien }, { data: pieces }] = await Promise.all([
+    supabase.from('biens').select('*').eq('id', bienId).maybeSingle(),
+    supabase.from('bien_pieces').select('nom, surface, niveau').eq('bien_id', bienId).order('ordre')
+  ]);
+  if (!bien) return { ok: false, error: 'Bien introuvable.' };
+  return genererAnnonce(
+    bien,
+    (pieces ?? []).map((p) => ({
+      nom: p.nom as string,
+      surface: p.surface === null ? null : Number(p.surface),
+      niveau: p.niveau as string | null
+    })),
+    t.data
+  );
 }

@@ -1,4 +1,5 @@
 import {
+  IconCopy,
   IconDownload,
   IconMapSearch,
   IconArrowsLeftRight,
@@ -109,6 +110,7 @@ export const Icons = {
   // Ovalia
   marche: IconMapSearch,
   download: IconDownload,
+  copy: IconCopy,
   today: IconHome,
   bien: IconBuildingEstate,
   rapprochement: IconArrowsLeftRight,

@@ -2,6 +2,7 @@ import 'server-only';
 import { z } from 'zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { MODEL, anthropicConfigured, demanderTexte, extraireJson } from '@/lib/ai/client';
+import { genererAnnonce, type AnnonceIA } from '@/lib/ai/annonce';
 import { communesProches, localiser, ventesDvf } from './dvf';
 import {
   TAUX_HONORAIRES,
@@ -17,7 +18,13 @@ import {
 export type EstimationDetails = {
   version: 1;
   source: 'dvf';
-  localisation: { commune: string; codeInsee: string; precision: 'adresse' | 'commune'; lat: number; lon: number };
+  localisation: {
+    commune: string;
+    codeInsee: string;
+    precision: 'adresse' | 'commune';
+    lat: number;
+    lon: number;
+  };
   surface: number;
   marche: Marche;
   comparables: ComparableResume[];
@@ -32,11 +39,27 @@ export type EstimationDetails = {
   ventesIds?: string[];
   strategie: string | null;
   iaErreur: string | null;
+  /** Projet d'annonce (ton chaleureux) rédigé avec l'estimation, repris par l'avis de valeur. */
+  annonce?: AnnonceIA | null;
 };
 
 export type ComparableResume = Pick<
   Comparable,
-  'id' | 'lat' | 'lon' | 'date' | 'prix' | 'surface' | 'pieces' | 'terrain' | 'dependances' | 'adresse' | 'commune' | 'distanceKm' | 'prixM2' | 'prixM2Indexe' | 'poids'
+  | 'id'
+  | 'lat'
+  | 'lon'
+  | 'date'
+  | 'prix'
+  | 'surface'
+  | 'pieces'
+  | 'terrain'
+  | 'dependances'
+  | 'adresse'
+  | 'commune'
+  | 'distanceKm'
+  | 'prixM2'
+  | 'prixM2Indexe'
+  | 'poids'
 >;
 
 export type EstimationResult = { ok: true; analyseId: string } | { ok: false; error: string };
@@ -89,19 +112,31 @@ function resumeComparable(c: Comparable): ComparableResume {
 }
 
 async function proposerAjustements(contexte: string) {
-  if (!anthropicConfigured()) return { erreur: 'Clé IA absente : aucun ajustement qualitatif.' } as const;
+  if (!anthropicConfigured())
+    return { erreur: 'Clé IA absente : aucun ajustement qualitatif.' } as const;
   try {
     const { stopReason, texte } = await demanderTexte(SYSTEM, contexte);
-    if (stopReason === 'refusal') return { erreur: 'L’IA a refusé de proposer des ajustements.' } as const;
+    if (stopReason === 'refusal')
+      return { erreur: 'L’IA a refusé de proposer des ajustements.' } as const;
     const parsed = AjustementsSchema.safeParse(extraireJson(texte));
-    if (!parsed.success) return { erreur: 'Réponse IA illisible : aucun ajustement appliqué.' } as const;
-    const ajustements = parsed.data.ajustements
-      .slice(0, 6)
-      .map((a) => ({ ...a, pourcentage: Math.max(-15, Math.min(15, Math.round(a.pourcentage * 10) / 10)) }));
-    return { ajustements, argumentaire: parsed.data.argumentaire, strategie: parsed.data.strategie } as const;
+    if (!parsed.success)
+      return {
+        erreur: 'Réponse IA illisible : aucun ajustement appliqué.'
+      } as const;
+    const ajustements = parsed.data.ajustements.slice(0, 6).map((a) => ({
+      ...a,
+      pourcentage: Math.max(-15, Math.min(15, Math.round(a.pourcentage * 10) / 10))
+    }));
+    return {
+      ajustements,
+      argumentaire: parsed.data.argumentaire,
+      strategie: parsed.data.strategie
+    } as const;
   } catch (error) {
     console.error('estimation.ia', error);
-    return { erreur: 'Le service IA n’a pas répondu : aucun ajustement appliqué.' } as const;
+    return {
+      erreur: 'Le service IA n’a pas répondu : aucun ajustement appliqué.'
+    } as const;
   }
 }
 
@@ -113,7 +148,11 @@ export async function estimerBien(
 ): Promise<EstimationResult> {
   const [{ data: bien }, { data: pieces }, { data: lectures }] = await Promise.all([
     supabase.from('biens').select('*').eq('id', bienId).maybeSingle(),
-    supabase.from('bien_pieces').select('nom, surface').eq('bien_id', bienId).order('ordre'),
+    supabase
+      .from('bien_pieces')
+      .select('nom, surface, niveau')
+      .eq('bien_id', bienId)
+      .order('ordre'),
     supabase
       .from('bien_analyses')
       .select('points_forts, points_faibles, note_source')
@@ -125,31 +164,56 @@ export async function estimerBien(
   ]);
   if (!bien) return { ok: false, error: 'Bien introuvable.' };
   if (bien.type !== 'maison' && bien.type !== 'appartement') {
-    return { ok: false, error: 'L’estimation DVF ne couvre pour l’instant que les maisons et les appartements.' };
+    return {
+      ok: false,
+      error: 'L’estimation DVF ne couvre pour l’instant que les maisons et les appartements.'
+    };
   }
   const surface = Number(bien.surface);
-  if (!(surface > 0)) return { ok: false, error: 'Renseignez la surface pour lancer l’estimation.' };
+  if (!(surface > 0))
+    return {
+      ok: false,
+      error: 'Renseignez la surface pour lancer l’estimation.'
+    };
 
   const loc = await localiser(bien);
-  if (!loc) return { ok: false, error: 'Renseignez la ville ou le code postal pour lancer l’estimation.' };
+  if (!loc)
+    return {
+      ok: false,
+      error: 'Renseignez la ville ou le code postal pour lancer l’estimation.'
+    };
 
   const communes = (await communesProches(loc, 8)).slice(0, 12);
   const ventes = await ventesDvf(communes.map((c) => c.code));
-  const bienEstime = { type: bien.type, surface, pieces: bien.pieces, terrain: bien.surface_terrain ? Number(bien.surface_terrain) : null };
+  const bienEstime = {
+    type: bien.type,
+    surface,
+    pieces: bien.pieces,
+    terrain: bien.surface_terrain ? Number(bien.surface_terrain) : null
+  };
   const manuelle = Boolean(options.ventesIds?.length);
   let selection;
   if (manuelle) {
     const ids = new Set(options.ventesIds);
     // Les ventes choisies peuvent venir d'une commune plus éloignée que le rayon automatique.
     const manquantes = options.ventesIds!.length - ventes.filter((v) => ids.has(v.id)).length;
-    const pool = manquantes > 0 ? [...ventes, ...(await ventesDvf((await communesProches(loc, 25)).slice(0, 40).map((c) => c.code)))] : ventes;
+    const pool =
+      manquantes > 0
+        ? [
+            ...ventes,
+            ...(await ventesDvf((await communesProches(loc, 25)).slice(0, 40).map((c) => c.code)))
+          ]
+        : ventes;
     const choisies = [...new Map(pool.filter((v) => ids.has(v.id)).map((v) => [v.id, v])).values()];
     selection = marcheSurSelection(bienEstime, choisies, ventes, loc, loc.precision === 'adresse');
     if (!selection) return { ok: false, error: 'Choisissez au moins 3 ventes comparables.' };
   } else {
     selection = selectionnerComparables(bienEstime, ventes, loc, loc.precision === 'adresse');
     if (!selection) {
-      return { ok: false, error: `Pas assez de ventes comparables autour de ${loc.commune} pour estimer ce bien.` };
+      return {
+        ok: false,
+        error: `Pas assez de ventes comparables autour de ${loc.commune} pour estimer ce bien.`
+      };
     }
   }
   const { comparables, marche } = selection;
@@ -186,10 +250,13 @@ export async function estimerBien(
         valeur_de_marche_brute: Math.round(surface * marche.prixM2),
         nombre_comparables: comparables.length,
         criteres: marche.criteres,
-        tendance_annuelle_pct: marche.tendanceAnnuelle === null ? null : Math.round(marche.tendanceAnnuelle * 1000) / 10,
+        tendance_annuelle_pct:
+          marche.tendanceAnnuelle === null ? null : Math.round(marche.tendanceAnnuelle * 1000) / 10,
         confiance: marche.confiance,
         terrain_median_comparables: Math.round(
-          [...comparables.map((c) => c.terrain)].sort((a, b) => a - b)[Math.floor(comparables.length / 2)] ?? 0
+          [...comparables.map((c) => c.terrain)].sort((a, b) => a - b)[
+            Math.floor(comparables.length / 2)
+          ] ?? 0
         ),
         exemples: top.slice(0, 10)
       }
@@ -198,14 +265,31 @@ export async function estimerBien(
     1
   );
 
-  const ia = await proposerAjustements(contexte);
+  // L'annonce ne dépend pas du marché : elle est rédigée en même temps que les ajustements.
+  const [ia, annonce] = await Promise.all([
+    proposerAjustements(contexte),
+    genererAnnonce(
+      bien,
+      (pieces ?? []).map((p) => ({
+        nom: p.nom,
+        surface: p.surface === null ? null : Number(p.surface),
+        niveau: p.niveau
+      }))
+    )
+  ]);
   const ajustements: Ajustement[] = 'erreur' in ia ? [] : ia.ajustements;
   const resultat = calculerValeurs(surface, marche, ajustements);
 
   const details: EstimationDetails = {
     version: 1,
     source: 'dvf',
-    localisation: { commune: loc.commune, codeInsee: loc.codeInsee, precision: loc.precision, lat: loc.lat, lon: loc.lon },
+    localisation: {
+      commune: loc.commune,
+      codeInsee: loc.codeInsee,
+      precision: loc.precision,
+      lat: loc.lat,
+      lon: loc.lon
+    },
     surface,
     marche,
     comparables: top,
@@ -217,7 +301,8 @@ export async function estimerBien(
     selection: manuelle ? 'manuelle' : 'auto',
     ventesIds: manuelle ? comparables.map((c) => c.id) : undefined,
     strategie: 'erreur' in ia ? null : ia.strategie,
-    iaErreur: 'erreur' in ia ? (ia.erreur ?? null) : null
+    iaErreur: 'erreur' in ia ? (ia.erreur ?? null) : null,
+    annonce: annonce.ok ? annonce.annonce : null
   };
 
   const { data: analyse, error } = await supabase
@@ -247,6 +332,13 @@ export async function estimerBien(
 }
 
 /** Recalcule les valeurs après modification des ajustements par le conseiller. */
-export function recalculer(details: EstimationDetails, ajustements: Ajustement[]): EstimationDetails {
-  return { ...details, ajustements, resultat: calculerValeurs(details.surface, details.marche, ajustements) };
+export function recalculer(
+  details: EstimationDetails,
+  ajustements: Ajustement[]
+): EstimationDetails {
+  return {
+    ...details,
+    ajustements,
+    resultat: calculerValeurs(details.surface, details.marche, ajustements)
+  };
 }

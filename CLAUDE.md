@@ -42,6 +42,10 @@ classif_projet `court_terme | moyen_terme | long_terme`. Champs Laforêt non mod
   (type `avis_valeur`, valeur_probable nulle : à exclure des « lectures IA » avec `.neq('type', 'avis_valeur')`).
 - PDF : route `/dashboard/biens/[id]/avis/pdf` → `pdf/render.tsx` (données, cartes IGN WMS, marché DVF 3 ans, crédit)
   → `pdf/document.tsx` (@react-pdf/renderer, charte Laforêt bleue, police Lexend dans `fonts/`, tracée par next.config).
+- Annonce (page après l'estimation) : `src/lib/ai/annonce.ts` rédige titre, texte et points forts (ton sobre / chaleureux / prestige,
+  rien d'inventé, ni prix ni motif de vente). Première version produite avec l'estimation (`details.annonce`), réécriture depuis
+  l'éditeur (`redigerAnnonce`). Prix et mentions légales (honoraires, DPE et dépenses d'énergie, copropriété, Géorisques)
+  calculés par `mentionsAnnonce` (types.ts), jamais par le modèle. Puis la frise « Les prochaines étapes » (`etapes`, modifiables).
 - Nombres : remplacer l'espace fine U+202F (absente de la police) ; préciser `lineHeight` sur les textes > 10 pt.
 - Ne jamais committer de PDF ou de données de clients réels.
 
