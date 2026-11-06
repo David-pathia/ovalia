@@ -155,8 +155,7 @@ export const BIEN_GROUPS: FieldGroup[] = [
       {
         key: 'derniers_travaux',
         label: 'Derniers travaux réalisés et dates',
-        kind: 'textarea',
-        fiche: true
+        kind: 'textarea'
       },
       {
         key: 'travaux_a_prevoir',
