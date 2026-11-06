@@ -8,7 +8,14 @@ import { Switch } from '@/components/ui/switch';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Icons } from '@/components/icons';
 import { cn } from '@/lib/utils';
-import { surfacePiece, type BienValues, type FieldDef, type FieldGroup, type Manquant, type PieceInput } from '../fields';
+import {
+  surfacePiece,
+  type BienValues,
+  type FieldDef,
+  type FieldGroup,
+  type Manquant,
+  type PieceInput
+} from '../fields';
 
 // Champs et relevé des pièces partagés entre la fiche bien et la saisie rapide.
 
@@ -20,13 +27,29 @@ export function toNumber(value: string, int: boolean): number | null {
   return int ? Math.round(n) : n;
 }
 
-function FieldInput({ field, value, onChange, invalid }: { field: FieldDef; value: unknown; onChange: (v: unknown) => void; invalid?: boolean }) {
+function FieldInput({
+  field,
+  value,
+  onChange,
+  invalid
+}: {
+  field: FieldDef;
+  value: unknown;
+  onChange: (v: unknown) => void;
+  invalid?: boolean;
+}) {
   const id = `f-${field.key}`;
   const aria = invalid ? { 'aria-invalid': true as const } : {};
   switch (field.kind) {
     case 'select':
       return (
-        <NativeSelect id={id} {...aria} className='w-full' value={(value as string) ?? ''} onChange={(e) => onChange(e.target.value || null)}>
+        <NativeSelect
+          id={id}
+          {...aria}
+          className='w-full'
+          value={(value as string) ?? ''}
+          onChange={(e) => onChange(e.target.value || null)}
+        >
           {!field.required && <NativeSelectOption value=''>—</NativeSelectOption>}
           {field.options.map(([v, l]) => (
             <NativeSelectOption key={v} value={v}>
@@ -41,7 +64,9 @@ function FieldInput({ field, value, onChange, invalid }: { field: FieldDef; valu
           id={id}
           className='w-full'
           value={value === true ? 'oui' : value === false ? 'non' : ''}
-          onChange={(e) => onChange(e.target.value === 'oui' ? true : e.target.value === 'non' ? false : null)}
+          onChange={(e) =>
+            onChange(e.target.value === 'oui' ? true : e.target.value === 'non' ? false : null)
+          }
         >
           <NativeSelectOption value=''>Non renseigné</NativeSelectOption>
           <NativeSelectOption value='oui'>Oui</NativeSelectOption>
@@ -51,7 +76,11 @@ function FieldInput({ field, value, onChange, invalid }: { field: FieldDef; valu
     case 'bool':
       return (
         <div className='flex h-8 items-center'>
-          <Switch id={id} checked={Boolean(value)} onCheckedChange={(checked) => onChange(checked)} />
+          <Switch
+            id={id}
+            checked={Boolean(value)}
+            onCheckedChange={(checked) => onChange(checked)}
+          />
         </div>
       );
     case 'int':
@@ -67,12 +96,22 @@ function FieldInput({ field, value, onChange, invalid }: { field: FieldDef; valu
             className={cn(field.unit && 'pr-16', 'tabular-nums')}
           />
           {field.unit && (
-            <span className='text-muted-foreground pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-xs'>{field.unit}</span>
+            <span className='text-muted-foreground pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-xs'>
+              {field.unit}
+            </span>
           )}
         </div>
       );
     case 'date':
-      return <Input id={id} {...aria} type='date' value={(value as string) ?? ''} onChange={(e) => onChange(e.target.value || null)} />;
+      return (
+        <Input
+          id={id}
+          {...aria}
+          type='date'
+          value={(value as string) ?? ''}
+          onChange={(e) => onChange(e.target.value || null)}
+        />
+      );
     case 'list':
       return (
         <Input
@@ -91,15 +130,45 @@ function FieldInput({ field, value, onChange, invalid }: { field: FieldDef; valu
         />
       );
     case 'textarea':
-      return <Textarea id={id} {...aria} rows={3} value={(value as string) ?? ''} onChange={(e) => onChange(e.target.value || null)} />;
+      return (
+        <Textarea
+          id={id}
+          {...aria}
+          rows={3}
+          value={(value as string) ?? ''}
+          onChange={(e) => onChange(e.target.value || null)}
+        />
+      );
     default:
-      return <Input id={id} {...aria} value={(value as string) ?? ''} onChange={(e) => onChange(e.target.value || null)} />;
+      return (
+        <Input
+          id={id}
+          {...aria}
+          value={(value as string) ?? ''}
+          onChange={(e) => onChange(e.target.value || null)}
+        />
+      );
   }
 }
 
-export function Section({ id, title, children, aside, className }: { id?: string; title: string; children: React.ReactNode; aside?: React.ReactNode; className?: string }) {
+export function Section({
+  id,
+  title,
+  children,
+  aside,
+  className
+}: {
+  id?: string;
+  title: string;
+  children: React.ReactNode;
+  aside?: React.ReactNode;
+  className?: string;
+}) {
   return (
-    <section id={id} className={cn('bg-card min-w-0 scroll-mt-20 rounded-2xl border p-4 sm:p-5', className)}>
+    <section
+      id={id}
+      className={cn('bg-card min-w-0 scroll-mt-20 rounded-2xl border p-4 sm:p-5', className)}
+    >
       <header className='mb-4 flex flex-wrap items-center justify-between gap-2'>
         <h2 className='font-display text-[17px] font-semibold'>{title}</h2>
         {aside}
@@ -132,11 +201,22 @@ export function GroupFields({
         {group.fields.map((field) => {
           const na = ficheNa.includes(field.key);
           const manque = manquants.has(field.key);
-          const large = field.wide || field.kind === 'textarea' || (group.fiche && field.kind === 'text');
+          const large =
+            field.wide || field.kind === 'textarea' || (group.fiche && field.kind === 'text');
           return (
-            <div key={field.key} className={cn('min-w-0 space-y-1.5', large && 'col-span-2', (field.wide || field.kind === 'textarea') && 'sm:col-span-4')}>
+            <div
+              key={field.key}
+              className={cn(
+                'min-w-0 space-y-1.5',
+                large && 'col-span-2',
+                (field.wide || field.kind === 'textarea') && 'sm:col-span-4'
+              )}
+            >
               <div className='flex items-center justify-between gap-2'>
-                <Label htmlFor={`f-${field.key}`} className={cn('text-xs', manque ? 'text-crit' : 'text-muted-foreground')}>
+                <Label
+                  htmlFor={`f-${field.key}`}
+                  className={cn('text-xs', manque ? 'text-crit' : 'text-muted-foreground')}
+                >
                   {field.label}
                   {field.fiche && <span aria-hidden='true'>*</span>}
                 </Label>
@@ -147,7 +227,9 @@ export function GroupFields({
                     aria-pressed={na}
                     className={cn(
                       'shrink-0 rounded-full border px-1.5 text-[10px] leading-4 transition-colors',
-                      na ? 'border-sauge bg-sauge/20 text-sauge' : 'text-muted-foreground hover:text-foreground'
+                      na
+                        ? 'border-sauge bg-sauge/20 text-sauge'
+                        : 'text-muted-foreground hover:text-foreground'
                     )}
                     title='Information inconnue ou sans objet pour ce bien'
                   >
@@ -160,9 +242,16 @@ export function GroupFields({
                   Inconnu ou sans objet
                 </p>
               ) : (
-                <FieldInput field={field} value={values[field.key]} onChange={(v) => onChange(field.key, v)} invalid={manque} />
+                <FieldInput
+                  field={field}
+                  value={values[field.key]}
+                  onChange={(v) => onChange(field.key, v)}
+                  invalid={manque}
+                />
               )}
-              {hints?.[field.key] && <p className='text-muted-foreground text-[11px] italic'>{hints[field.key]}</p>}
+              {hints?.[field.key] && (
+                <p className='text-muted-foreground text-[11px] italic'>{hints[field.key]}</p>
+              )}
             </div>
           );
         })}
@@ -188,8 +277,7 @@ export function ReleveTable({
     onChange(
       pieces.map((p, j) => {
         if (j !== i) return p;
-        const next = { ...p, ...patch };
-        return { ...next, surface: surfacePiece(next) };
+        return { ...p, ...patch };
       })
     );
   const num = (v: number | null) => (v === null || v === undefined ? '' : String(v));
@@ -203,59 +291,65 @@ export function ReleveTable({
         <span className='text-muted-foreground text-xs tabular-nums'>
           Total relevé : <span className='text-foreground font-mono'>{fmt.format(total)} m²</span>
           {ecart !== null && Math.abs(ecart) > 0.1 && (
-            <span className='text-warn'> · écart de {Math.round(ecart * 100)} % avec la surface déclarée</span>
+            <span className='text-warn'>
+              {' '}
+              · écart de {Math.round(ecart * 100)} % avec la surface déclarée
+            </span>
           )}
         </span>
       }
     >
       <div className='overflow-x-auto'>
-        <table className='w-full min-w-[560px] text-sm'>
+        <table className='w-full min-w-[420px] text-sm'>
           <thead>
             <tr className='text-muted-foreground text-left text-xs'>
               <th className='pb-2 font-medium'>Pièce</th>
-              <th className='w-24 pb-2 font-medium'>Longueur (m)</th>
-              <th className='w-24 pb-2 font-medium'>Largeur (m)</th>
-              <th className='w-24 pb-2 text-right font-medium'>Surface</th>
+              <th className='w-32 pb-2 font-medium'>Surface (m²)</th>
               <th className='w-24 pb-2 font-medium'>Niveau</th>
               <th className='w-10 pb-2' />
             </tr>
           </thead>
           <tbody>
             {pieces.map((p, i) => {
-              const sansDims = !(p.longueur && p.largeur);
               return (
                 <tr key={i}>
                   <td className='py-1 pr-2'>
-                    <Input aria-label={`Nom, pièce ${i + 1}`} value={p.nom} onChange={(e) => set(i, { nom: e.target.value })} />
-                  </td>
-                  <td className='py-1 pr-2'>
                     <Input
-                      aria-label={`Longueur, ${p.nom || `pièce ${i + 1}`}`}
-                      aria-invalid={invalid && !p.longueur ? true : undefined}
-                      inputMode='decimal'
-                      className='tabular-nums'
-                      value={num(p.longueur)}
-                      onChange={(e) => set(i, { longueur: toNumber(e.target.value, false) })}
+                      aria-label={`Nom, pièce ${i + 1}`}
+                      value={p.nom}
+                      onChange={(e) => set(i, { nom: e.target.value })}
                     />
                   </td>
                   <td className='py-1 pr-2'>
                     <Input
-                      aria-label={`Largeur, ${p.nom || `pièce ${i + 1}`}`}
-                      aria-invalid={invalid && !p.largeur ? true : undefined}
+                      aria-label={`Surface en m², ${p.nom || `pièce ${i + 1}`}`}
+                      aria-invalid={invalid && !surfacePiece(p) ? true : undefined}
                       inputMode='decimal'
                       className='tabular-nums'
-                      value={num(p.largeur)}
-                      onChange={(e) => set(i, { largeur: toNumber(e.target.value, false) })}
+                      value={num(surfacePiece(p))}
+                      onChange={(e) =>
+                        set(i, {
+                          surface: toNumber(e.target.value, false),
+                          longueur: null,
+                          largeur: null
+                        })
+                      }
                     />
                   </td>
-                  <td className={cn('py-1 pr-2 text-right font-mono text-xs', sansDims && 'text-muted-foreground')}>
-                    {p.surface ? `${fmt.format(p.surface)} m²` : '—'}
-                  </td>
                   <td className='py-1 pr-2'>
-                    <Input aria-label={`Niveau, pièce ${i + 1}`} value={p.niveau ?? ''} onChange={(e) => set(i, { niveau: e.target.value || null })} />
+                    <Input
+                      aria-label={`Niveau, pièce ${i + 1}`}
+                      value={p.niveau ?? ''}
+                      onChange={(e) => set(i, { niveau: e.target.value || null })}
+                    />
                   </td>
                   <td className='py-1'>
-                    <Button variant='ghost' size='icon-sm' aria-label={`Supprimer ${p.nom || `la pièce ${i + 1}`}`} onClick={() => onChange(pieces.filter((_, j) => j !== i))}>
+                    <Button
+                      variant='ghost'
+                      size='icon-sm'
+                      aria-label={`Supprimer ${p.nom || `la pièce ${i + 1}`}`}
+                      onClick={() => onChange(pieces.filter((_, j) => j !== i))}
+                    >
                       <Icons.trash />
                     </Button>
                   </td>
@@ -269,12 +363,18 @@ export function ReleveTable({
         variant='outline'
         size='sm'
         className='mt-3'
-        onClick={() => onChange([...pieces, { nom: '', longueur: null, largeur: null, surface: null, niveau: null }])}
+        onClick={() =>
+          onChange([
+            ...pieces,
+            { nom: '', longueur: null, largeur: null, surface: null, niveau: null }
+          ])
+        }
       >
         <Icons.add /> Ajouter une pièce
       </Button>
       <p className='text-muted-foreground mt-2 text-xs'>
-        La surface se calcule à partir de la longueur et de la largeur. Pour une pièce irrégulière, saisissez des dimensions équivalentes.
+        Saisissez la surface de chaque pièce en m². Le total est comparé à la surface habitable
+        déclarée.
       </p>
     </Section>
   );
@@ -288,13 +388,19 @@ export function ManquantsPanel({ manquants }: { manquants: Manquant[] }) {
       </p>
     );
   }
-  const parGroupe = manquants.reduce<Record<string, Manquant[]>>((acc, m) => ({ ...acc, [m.groupe]: [...(acc[m.groupe] ?? []), m] }), {});
+  const parGroupe = manquants.reduce<Record<string, Manquant[]>>(
+    (acc, m) => ({ ...acc, [m.groupe]: [...(acc[m.groupe] ?? []), m] }),
+    {}
+  );
   return (
     <div className='border-crit/40 bg-crit/10 rounded-xl border p-3'>
       <p className='text-crit text-sm font-semibold'>
-        Enregistrement bloqué : {manquants.length} information{manquants.length > 1 ? 's' : ''} manquante{manquants.length > 1 ? 's' : ''}
+        Enregistrement bloqué : {manquants.length} information{manquants.length > 1 ? 's' : ''}{' '}
+        manquante{manquants.length > 1 ? 's' : ''}
       </p>
-      <p className='text-muted-foreground mt-0.5 text-xs'>Renseignez-les ou cochez « Inconnu / S.O. ».</p>
+      <p className='text-muted-foreground mt-0.5 text-xs'>
+        Renseignez-les ou cochez « Inconnu / S.O. ».
+      </p>
       <ul className='mt-2 max-h-56 space-y-1.5 overflow-y-auto text-xs'>
         {Object.entries(parGroupe).map(([groupe, items]) => (
           <li key={groupe}>
@@ -306,11 +412,18 @@ export function ManquantsPanel({ manquants }: { manquants: Manquant[] }) {
                     href={`#${m.key === 'pieces' ? 'pieces' : `f-${m.key}`}`}
                     className='hover:underline'
                     onClick={(e) => {
-                      const el = document.getElementById(m.key === 'pieces' ? 'pieces' : `f-${m.key}`);
+                      const el = document.getElementById(
+                        m.key === 'pieces' ? 'pieces' : `f-${m.key}`
+                      );
                       if (el) {
                         e.preventDefault();
                         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement) el.focus({ preventScroll: true });
+                        if (
+                          el instanceof HTMLInputElement ||
+                          el instanceof HTMLTextAreaElement ||
+                          el instanceof HTMLSelectElement
+                        )
+                          el.focus({ preventScroll: true });
                       }
                     }}
                   >

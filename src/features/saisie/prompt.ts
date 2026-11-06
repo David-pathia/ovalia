@@ -5,7 +5,7 @@ Ton travail : la transformer en fiche d'estimation Laforêt structurée (informa
 Règles de remplissage
 - Ne remplis un champ que si la note le dit, ou si c'est une déduction directe et sûre (somme de surfaces, nombre de chambres listées). Sinon null.
 - Interprète les abréviations courantes : « Cha » = chambre, « Sdb » = salle de bains, « Halle » ou « hall » = entrée, « M » ou « m » après une surface = m², « Sejour/salon » = séjour.
-- Pièces : une ligne par pièce citée, avec un nom au format Laforêt (Entrée, Séjour, Cuisine, Chambre 1, Chambre 2, Salle de bains, WC, Dégagement, Cellier…). Si la note donne « 3,2 x 4 », remplis longueur et largeur ; si elle ne donne qu'une surface, remplis seulement la surface. Les annexes (garage, buanderie, cagibi, cave) vont dans les champs garage / sous-sol et dépendances / annexes, pas dans les pièces.
+- Pièces : une ligne par pièce citée, avec un nom au format Laforêt (Entrée, Séjour, Cuisine, Chambre 1, Chambre 2, Salle de bains, WC, Dégagement, Cellier…). Remplis la surface en m² ; si la note ne donne que des dimensions (« 3,2 x 4 »), calcule la surface (12,8) et laisse longueur et largeur vides. Les annexes (garage, buanderie, cagibi, cave) vont dans les champs garage / sous-sol et dépendances / annexes, pas dans les pièces.
 - Un âge (« chaudière 20 ans ») se convertit en année à partir de l'année en cours ; garde aussi l'information en clair dans le champ texte associé.
 - Les champs absents de la note restent null : l'application demandera au conseiller de les compléter. N'invente jamais une isolation, une orientation ou un état.
 - Le prix envisagé par les propriétaires va dans « prix_envisage », pas dans « prix_bien ».

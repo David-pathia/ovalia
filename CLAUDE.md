@@ -57,8 +57,10 @@ classif_projet `court_terme | moyen_terme | long_terme`. Champs Laforêt non mod
 - RLS sur toutes les tables : `owner_id = auth.uid()`.
 
 ## Fiche d'estimation (obligatoire)
-- `src/features/biens/fields.ts` : groupes `fiche: true` = fiche d'estimation Laforêt (31 champs) + relevé des pièces
-  (longueur × largeur). `champsManquants()` bloque tout enregistrement (saisie rapide et fiche bien), côté client et serveur.
+- `src/features/biens/fields.ts` : groupes `fiche: true` = fiche d'estimation Laforêt ; seuls les champs marqués `fiche: true`
+  (24) sont exigés. Facultatifs : année des rénovations, isolations (combles, murs, plancher), DPE (classe, date, dépenses).
+  Relevé des pièces : surface en m² par pièce (longueur et largeur ne servent plus qu'aux anciens relevés).
+  `champsManquants()` bloque tout enregistrement (saisie rapide et fiche bien), côté client et serveur.
 - Un champ peut être déclaré « Inconnu / sans objet » (colonne `biens.fiche_na`), sauf la surface habitable.
 - La même liste de champs sert au formulaire, à la validation Zod et au brouillon renvoyé par l'IA.
 

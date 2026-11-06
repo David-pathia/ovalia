@@ -864,6 +864,7 @@ function Bien({ d }: { d: AvisPdfData }) {
   const na = (bien.fiche_na as string[] | undefined) ?? [];
   const groupes = BIEN_GROUPS.filter((g) => g.fiche);
   const total = pieces.reduce((t, p) => t + (p.surface ?? 0), 0);
+  const avecDims = pieces.some((p) => p.longueur && p.largeur);
   return (
     <PageDossier titre='Votre bien' avis={avis}>
       <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
@@ -942,17 +943,19 @@ function Bien({ d }: { d: AvisPdfData }) {
           <View style={[s.ligne, { backgroundColor: C.pale }]} fixed={false}>
             <Text style={{ flex: 2, fontWeight: 600, color: C.marine, fontSize: 8 }}>Pièce</Text>
             <Text style={{ flex: 1, fontWeight: 600, color: C.marine, fontSize: 8 }}>Niveau</Text>
-            <Text
-              style={{
-                flex: 1.3,
-                fontWeight: 600,
-                color: C.marine,
-                fontSize: 8,
-                textAlign: 'right'
-              }}
-            >
-              Dimensions
-            </Text>
+            {avecDims && (
+              <Text
+                style={{
+                  flex: 1.3,
+                  fontWeight: 600,
+                  color: C.marine,
+                  fontSize: 8,
+                  textAlign: 'right'
+                }}
+              >
+                Dimensions
+              </Text>
+            )}
             <Text
               style={{
                 flex: 1,
@@ -969,9 +972,11 @@ function Bien({ d }: { d: AvisPdfData }) {
             <View key={i} style={s.ligne} wrap={false}>
               <Text style={{ flex: 2, fontSize: 8.5, fontWeight: 600 }}>{p.nom}</Text>
               <Text style={{ flex: 1, fontSize: 8.5 }}>{p.niveau ?? ''}</Text>
-              <Text style={{ flex: 1.3, fontSize: 8.5, textAlign: 'right' }}>
-                {p.longueur && p.largeur ? `${nb(p.longueur, 2)} x ${nb(p.largeur, 2)} m` : ''}
-              </Text>
+              {avecDims && (
+                <Text style={{ flex: 1.3, fontSize: 8.5, textAlign: 'right' }}>
+                  {p.longueur && p.largeur ? `${nb(p.longueur, 2)} x ${nb(p.largeur, 2)} m` : ''}
+                </Text>
+              )}
               <Text style={{ flex: 1, fontSize: 8.5, textAlign: 'right' }}>
                 {p.surface ? `${nb(p.surface, 2)} m²` : '—'}
               </Text>
@@ -980,7 +985,7 @@ function Bien({ d }: { d: AvisPdfData }) {
           <View style={[s.ligne, { borderBottomWidth: 0 }]}>
             <Text
               style={{
-                flex: 4.3,
+                flex: avecDims ? 4.3 : 3,
                 fontSize: 8.5,
                 fontWeight: 700,
                 color: C.marine
