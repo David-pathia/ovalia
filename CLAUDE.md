@@ -86,6 +86,14 @@ classif_projet `court_terme | moyen_terme | long_terme`. Champs Laforêt non mod
   secteur (communes ou zone en km), chambres et surface minimales, critères de confort. Rapprochements ≥ 50 enregistrés ;
   statut du conseiller conservé. Recalcul : après import, estimation, modification d'un bien, bouton « Recalculer ».
 
+## Site public de Julien (src/app/site, src/features/site)
+- Pages publiques sous `/site` (ajouté aux `PUBLIC_PATHS` de session.ts) : accueil, mon histoire, valeurs, Julien & Laforêt,
+  méthode, contact, mentions légales. Contenus dans `contenu.ts`, repris du cahier des charges de Julien : rien d'inventé.
+- Charte claire en bleus (`src/styles/themes/julien.css`, variables redéfinies sur `[data-site='julien']`, police Lexend).
+- Non référencé (`robots: noindex`) et sans logo Laforêt tant que l'agence n'a pas validé l'usage de la marque.
+- WhatsApp via lien `wa.me` prérempli ; QR code et liens dans `/dashboard/mini-site`.
+- À venir : questionnaire « Votre avis compte », demande d'estimation → prospect, réservation de rendez-vous.
+
 ## Sécurité
 - `src/proxy.ts` → `src/lib/supabase/session.ts` : toute route hors `/connexion` et `/auth` exige une session.
   Sans variables Supabase, tout est fermé.

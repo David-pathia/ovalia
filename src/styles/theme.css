@@ -1,4 +1,5 @@
 @import './themes/forest-mind.css';
+@import './themes/julien.css';
 
 body {
   @apply overscroll-none;

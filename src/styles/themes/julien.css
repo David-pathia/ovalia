@@ -1,0 +1,37 @@
+/* Site public de Julien Ossedat — bleus cohérents avec l'univers Laforêt, fonds blancs et bleu très clair.
+   Les variables sont redéfinies sur le conteneur du site : le reste d'Ovalia garde la charte Forest Mind. */
+
+[data-site='julien'] {
+  color-scheme: light;
+  --background: #ffffff;
+  --foreground: #1c2747;
+  --card: #ffffff;
+  --card-foreground: #1c2747;
+  --popover: #ffffff;
+  --popover-foreground: #1c2747;
+  --primary: #2b55b0;
+  --primary-foreground: #ffffff;
+  --secondary: #eaf2fb;
+  --secondary-foreground: #1f3a8a;
+  --muted: #f3f7fc;
+  --muted-foreground: #5b6b8c;
+  --accent: #eaf2fb;
+  --accent-foreground: #1f3a8a;
+  --border: #d6e3f3;
+  --input: #c9d9ee;
+  --ring: #4a9bdd;
+  --marine: #1f3a8a;
+  --bleu: #2b55b0;
+  --ciel: #4a9bdd;
+  --pale: #eaf2fb;
+  --whatsapp: #1c8c4c;
+  --font-display: var(--font-lexend), var(--font-inter), ui-sans-serif, sans-serif;
+}
+
+@theme inline {
+  --color-marine: var(--marine);
+  --color-bleu: var(--bleu);
+  --color-ciel: var(--ciel);
+  --color-pale: var(--pale);
+  --color-whatsapp: var(--whatsapp);
+}

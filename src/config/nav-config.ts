@@ -35,7 +35,7 @@ export const navGroups: NavGroup[] = [
     items: [
       { title: 'Boîte mail', url: '/dashboard/mails', icon: 'mail', label: 'Bientôt', items: [] },
       { title: 'LinkedIn', url: '/dashboard/linkedin', icon: 'linkedin', label: 'Bientôt', items: [] },
-      { title: 'Mini-site', url: '/dashboard/mini-site', icon: 'site', label: 'Bientôt', items: [] }
+      { title: 'Mini-site', url: '/dashboard/mini-site', icon: 'site', items: [] }
     ]
   },
   {

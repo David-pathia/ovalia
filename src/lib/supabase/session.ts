@@ -1,7 +1,8 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-const PUBLIC_PATHS = ['/connexion', '/auth'];
+// /site : site public de Julien Ossedat (aucune donnée privée, aucun accès à la base).
+const PUBLIC_PATHS = ['/connexion', '/auth', '/site'];
 
 function isPublic(pathname: string) {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));

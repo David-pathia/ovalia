@@ -1,4 +1,7 @@
 import {
+  IconBrandWhatsapp,
+  IconMapPin,
+  IconMenu2,
   IconCopy,
   IconDownload,
   IconMapSearch,
@@ -111,6 +114,9 @@ export const Icons = {
   marche: IconMapSearch,
   download: IconDownload,
   copy: IconCopy,
+  whatsapp: IconBrandWhatsapp,
+  mapPin: IconMapPin,
+  menu: IconMenu2,
   today: IconHome,
   bien: IconBuildingEstate,
   rapprochement: IconArrowsLeftRight,
