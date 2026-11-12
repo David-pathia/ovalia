@@ -189,7 +189,7 @@ export function PiedSite() {
         </nav>
       </div>
       <p className='border-white/15 border-t px-4 py-4 text-center text-xs text-white/60'>
-        Julien Ossedat est négociateur immobilier au sein de l’agence Laforêt Roanne. Chaque agence
+        Julien Ossedat est négociateur immobilier salarié de l’agence Laforêt Roanne. Chaque agence
         Laforêt est une entité juridiquement et financièrement indépendante.
       </p>
     </footer>

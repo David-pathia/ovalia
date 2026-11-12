@@ -15,8 +15,10 @@ export default function MentionsLegales() {
       <Texte>
         <h2 className='font-display text-marine pt-4 text-2xl font-bold'>Éditeur</h2>
         <p>
-          Site de Julien Ossedat, négociateur immobilier au sein de l’agence Laforêt Roanne, 38 rue
-          Émile Noirot, 42300 Roanne, téléphone 04 77 23 09 09, roanne@laforet.com.
+          Site de Julien Ossedat, négociateur immobilier salarié de l’agence Laforêt Roanne
+          (L’Agence Gambetta), 38 rue Émile Noirot, 42300 Roanne, téléphone 04 77 23 09 09,
+          roanne@laforet.com. Julien Ossedat exerce sous la carte professionnelle de l’agence,
+          mentionnée ci-dessous.
         </p>
         <p>{AGENCE_DEFAUT.mentions}</p>
         <h2 className='font-display text-marine text-2xl font-bold'>Hébergement</h2>
