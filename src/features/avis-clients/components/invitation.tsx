@@ -28,22 +28,31 @@ export function CreerInvitation({
   const [telephone, setTelephone] = useState('');
   const [bienId, setBienId] = useState('');
   const [lien, setLien] = useState<string | null>(null);
+  const [message, setMessage] = useState('');
   const [envoi, setEnvoi] = useState(false);
 
+  const lienWhatsApp = (message: string) =>
+    `https://wa.me/${telephone ? international(telephone) : ''}?text=${encodeURIComponent(message)}`;
+
   const creer = async (canal: 'whatsapp' | 'sms' | 'lien') => {
+    // L'onglet WhatsApp est ouvert dès le clic : ouvert après l'enregistrement, il serait bloqué par le navigateur.
+    const onglet = canal === 'whatsapp' ? window.open('', '_blank') : null;
     setEnvoi(true);
     const res = await creerInvitation({ prenom, telephone, bienId: bienId || null, canal });
     setEnvoi(false);
-    if (!res.ok) return toast.error(res.error);
+    if (!res.ok) {
+      onglet?.close();
+      toast.error(res.error);
+      return;
+    }
     const url = `${base}/site/avis/${res.jeton}`;
     const message = MESSAGE_INVITATION(prenom.trim() || null, url);
     setLien(url);
-    if (canal === 'whatsapp')
-      window.open(
-        `https://wa.me/${telephone ? international(telephone) : ''}?text=${encodeURIComponent(message)}`,
-        '_blank'
-      );
-    else if (canal === 'sms')
+    setMessage(message);
+    if (canal === 'whatsapp') {
+      if (onglet) onglet.location.href = lienWhatsApp(message);
+      else toast.info('Cliquez sur « Ouvrir WhatsApp » ci-dessous pour envoyer le message.');
+    } else if (canal === 'sms')
       window.location.href = `sms:${telephone.replace(/\s/g, '')}?&body=${encodeURIComponent(message)}`;
     else {
       try {
@@ -113,9 +122,23 @@ export function CreerInvitation({
         </Button>
       </div>
       {lien && (
-        <p className='text-muted-foreground text-xs break-all'>
-          Lien créé : <span className='text-foreground font-mono'>{lien}</span>
-        </p>
+        <div className='bg-muted/50 space-y-2 rounded-xl p-3'>
+          <p className='text-muted-foreground text-xs break-all'>
+            Lien créé : <span className='text-foreground font-mono'>{lien}</span>
+          </p>
+          <p className='text-muted-foreground text-xs'>
+            WhatsApp s’ouvre avec le message prêt : il reste à appuyer sur « Envoyer ». Si rien ne
+            s’est ouvert :
+          </p>
+          <a
+            href={lienWhatsApp(message)}
+            target='_blank'
+            rel='noopener noreferrer'
+            className='text-cuivre inline-flex items-center gap-1.5 text-sm font-semibold hover:underline'
+          >
+            <Icons.whatsapp className='size-4' /> Ouvrir WhatsApp
+          </a>
+        </div>
       )}
     </div>
   );
