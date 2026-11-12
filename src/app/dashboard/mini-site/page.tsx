@@ -53,8 +53,9 @@ export default async function MiniSitePage() {
           </p>
           <h3 className='mt-4 text-sm font-semibold'>Prochaines étapes</h3>
           <p className='text-muted-foreground mt-1 text-sm'>
-            Questionnaire « Votre avis compte » et son tableau de bord, formulaire de demande
-            d’estimation (création du prospect dans Ovalia), réservation de rendez-vous en ligne.
+            Formulaire de demande d’estimation (création du prospect dans Ovalia) et réservation
+            de rendez-vous en ligne. Le questionnaire « Votre avis compte » est en place : menu
+            Avis clients.
           </p>
         </section>
 

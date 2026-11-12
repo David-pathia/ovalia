@@ -180,6 +180,9 @@ export function PiedSite() {
               {titre}
             </Link>
           ))}
+          <Link href='/site/avis' className='text-white/80 hover:text-white hover:underline'>
+            Votre avis compte
+          </Link>
           <Link
             href='/site/mentions-legales'
             className='text-white/80 hover:text-white hover:underline'

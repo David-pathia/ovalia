@@ -92,7 +92,11 @@ classif_projet `court_terme | moyen_terme | long_terme`. Champs Laforêt non mod
 - Charte claire en bleus (`src/styles/themes/julien.css`, variables redéfinies sur `[data-site='julien']`, police Lexend).
 - Non référencé (`robots: noindex`) et sans logo Laforêt tant que l'agence n'a pas validé l'usage de la marque.
 - WhatsApp via lien `wa.me` prérempli ; QR code et liens dans `/dashboard/mini-site`.
-- À venir : questionnaire « Votre avis compte », demande d'estimation → prospect, réservation de rendez-vous.
+- Questionnaire « Votre avis compte » (`src/features/avis-clients`) : pages `/site/avis` (lien général, QR code) et
+  `/site/avis/[jeton]` (lien personnel, une réponse). Table `avis_clients` + `site_config` (migration 20261112100000) ;
+  le public n'écrit que via les fonctions SQL `repondre_avis` / `avis_invitation` (security definer, aucune lecture).
+  Tableau de bord et validation des témoignages : `/dashboard/avis-clients`. Aucune publication automatique.
+- À venir : demande d'estimation → prospect, réservation de rendez-vous, questionnaire sur le bien visité.
 
 ## Sécurité
 - `src/proxy.ts` → `src/lib/supabase/session.ts` : toute route hors `/connexion` et `/auth` exige une session.

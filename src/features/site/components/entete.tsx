@@ -15,7 +15,9 @@ export function EnteteSite() {
       <div className='mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6'>
         <Link href='/site' className='leading-tight' onClick={() => setOuvert(false)}>
           <span className='font-display text-marine block text-lg font-bold'>{JULIEN.nom}</span>
-          <span className='text-muted-foreground block text-xs whitespace-nowrap'>{JULIEN.fonction}</span>
+          <span className='text-muted-foreground block text-xs whitespace-nowrap'>
+            {JULIEN.fonction}
+          </span>
         </Link>
         <nav className='hidden items-center gap-1 xl:flex' aria-label='Navigation principale'>
           {PAGES_SITE.slice(1).map(([href, titre]) => (
