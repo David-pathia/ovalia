@@ -12,7 +12,7 @@ const lexend = Lexend({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Julien Ossedat · Laforêt Roanne',
+    absolute: 'Julien Ossedat · Laforêt Roanne',
     template: '%s · Julien Ossedat, Laforêt Roanne'
   },
   description:
