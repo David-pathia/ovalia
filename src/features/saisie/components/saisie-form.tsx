@@ -11,9 +11,23 @@ import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Icons } from '@/components/icons';
 import { TYPES_BIEN } from '@/lib/biens/options';
 import { cn } from '@/lib/utils';
-import { BIEN_FIELDS, BIEN_GROUPS, champsManquants, surfacePiece, type BienValues, type PieceInput } from '@/features/biens/fields';
-import { GroupFields, ManquantsPanel, ReleveTable, Section } from '@/features/biens/components/fiche-fields';
+import {
+  BIEN_FIELDS,
+  BIEN_GROUPS,
+  champsManquants,
+  surfacePiece,
+  type BienValues,
+  type PieceInput
+} from '@/features/biens/fields';
+import {
+  GroupFields,
+  ManquantsPanel,
+  ReleveTable,
+  Section
+} from '@/features/biens/components/fiche-fields';
 import { analyserNote, enregistrerBien } from '../actions';
+import { BoutonDictee } from '@/features/dictee/components/bouton-dictee';
+import { DicteeFiche } from '@/features/dictee/components/dictee-fiche';
 import type { Analyse, Extraction } from '../schema';
 
 type Vendeur = NonNullable<Extraction['vendeur']>;
@@ -25,7 +39,14 @@ Séjour 4,5 x 4 ; cuisine 3 x 2,7 ; chambre 1 3,2 x 3,1…
 Garage 18 m² + buanderie, séjour plein sud
 Vendeur : M. Dupont, 06 00 00 00 00, mutation, vente sous 6 mois, souhaite 150 000 €`;
 
-const VENDEUR_VIDE: Vendeur = { civilite: null, nom: '', prenom: null, email: null, portable: null, telephone_fixe: null };
+const VENDEUR_VIDE: Vendeur = {
+  civilite: null,
+  nom: '',
+  prenom: null,
+  email: null,
+  portable: null,
+  telephone_fixe: null
+};
 
 /** Valeurs de départ de la fiche à partir du brouillon de l'IA (même liste de champs que la fiche bien). */
 function valeursDepuisBrouillon(brouillon: Extraction['bien']): BienValues {
@@ -34,7 +55,8 @@ function valeursDepuisBrouillon(brouillon: Extraction['bien']): BienValues {
   for (const f of BIEN_FIELDS) {
     const v = b[f.key];
     if (f.kind === 'list') valeurs[f.key] = Array.isArray(v) ? v : [];
-    else if (f.kind === 'bool') valeurs[f.key] = typeof v === 'boolean' ? v : f.key === 'prix_visible';
+    else if (f.kind === 'bool')
+      valeurs[f.key] = typeof v === 'boolean' ? v : f.key === 'prix_visible';
     else valeurs[f.key] = v ?? null;
   }
   valeurs.statut = 'estimation';
@@ -63,7 +85,13 @@ export function SaisieForm() {
       setBien(valeursDepuisBrouillon(res.data.bien));
       setPieces(
         res.data.pieces.map((p) => {
-          const piece = { nom: p.nom, longueur: p.longueur, largeur: p.largeur, surface: p.surface, niveau: p.niveau };
+          const piece = {
+            nom: p.nom,
+            longueur: p.longueur,
+            largeur: p.largeur,
+            surface: p.surface,
+            niveau: p.niveau
+          };
           return { ...piece, surface: surfacePiece(piece) };
         })
       );
@@ -77,7 +105,15 @@ export function SaisieForm() {
   if (!bien || !lecture) {
     return (
       <div className='mx-auto w-full max-w-3xl space-y-4'>
-        <Section title='1. Collez ou dictez la note'>
+        <Section
+          title='1. Collez ou dictez la note'
+          aside={
+            <BoutonDictee
+              libelle={note.trim() ? 'Dicter la suite' : 'Dicter la note'}
+              onTexte={(t) => setNote((n) => (n.trim() ? `${n.trim()}\n${t}` : t))}
+            />
+          }
+        >
           <Label htmlFor='note' className='sr-only'>
             Note d’estimation
           </Label>
@@ -90,8 +126,9 @@ export function SaisieForm() {
             className='min-h-72 font-mono text-[13px]'
           />
           <p className='text-muted-foreground mt-2 text-xs'>
-            Suivez de préférence la fiche d’estimation Laforêt : tout ce qui manque devra être complété avant
-            l’enregistrement. Sur téléphone, le micro du clavier permet de dicter.
+            Suivez de préférence la fiche d’estimation Laforêt : tout ce qui manque devra être
+            complété avant l’enregistrement. Le bouton « Dicter » transcrit votre voix dans la note
+            (2 minutes par dictée, vous pouvez enchaîner).
           </p>
           {error && (
             <p role='alert' className='text-crit mt-3 text-sm'>
@@ -99,7 +136,11 @@ export function SaisieForm() {
             </p>
           )}
           <div className='mt-4 flex justify-end'>
-            <Button onClick={analyse} disabled={analysing || note.trim().length < 10} className='h-10 px-4 font-semibold'>
+            <Button
+              onClick={analyse}
+              disabled={analysing || note.trim().length < 10}
+              className='h-10 px-4 font-semibold'
+            >
               {analysing ? (
                 <>
                   <Icons.spinner className='animate-spin' /> Analyse en cours…
@@ -117,8 +158,10 @@ export function SaisieForm() {
   }
 
   const set = (key: string, value: unknown) => setBien((b) => (b ? { ...b, [key]: value } : b));
-  const toggleNa = (key: string) => setFicheNa((na) => (na.includes(key) ? na.filter((k) => k !== key) : [...na, key]));
-  const setV = (key: keyof Vendeur, value: string) => setVendeurState((v) => ({ ...v, [key]: key === 'nom' ? value : value || null }));
+  const toggleNa = (key: string) =>
+    setFicheNa((na) => (na.includes(key) ? na.filter((k) => k !== key) : [...na, key]));
+  const setV = (key: keyof Vendeur, value: string) =>
+    setVendeurState((v) => ({ ...v, [key]: key === 'nom' ? value : value || null }));
 
   const manquants = champsManquants(bien, ficheNa, pieces);
   const manquantsKeys = new Set(tente ? manquants.map((m) => m.key) : []);
@@ -128,7 +171,8 @@ export function SaisieForm() {
     setError(null);
     setTente(true);
     if (typeManquant) return setError('Choisissez le type de bien.');
-    if (manquants.length > 0) return setError('Complétez la fiche d’estimation avant d’enregistrer.');
+    if (manquants.length > 0)
+      return setError('Complétez la fiche d’estimation avant d’enregistrer.');
     startSave(async () => {
       const res = await enregistrerBien(
         {
@@ -149,13 +193,33 @@ export function SaisieForm() {
   return (
     <div className='grid items-start gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]'>
       <div className='flex min-w-0 flex-col gap-5'>
+        <DicteeFiche
+          valeurs={bien}
+          pieces={pieces}
+          onAppliquer={(b, ps) => {
+            setBien(b);
+            setPieces(ps);
+          }}
+        />
+
         <Section title='Le bien' className={cn(tente && typeManquant && 'border-crit/50')}>
           <div className='grid grid-cols-2 gap-3 sm:grid-cols-4'>
             <div className='min-w-0 space-y-1.5'>
-              <Label htmlFor='type' className={cn('text-xs', tente && typeManquant ? 'text-crit' : 'text-muted-foreground')}>
+              <Label
+                htmlFor='type'
+                className={cn(
+                  'text-xs',
+                  tente && typeManquant ? 'text-crit' : 'text-muted-foreground'
+                )}
+              >
                 Type *
               </Label>
-              <NativeSelect id='type' className='w-full' value={(bien.type as string) ?? ''} onChange={(e) => set('type', e.target.value || null)}>
+              <NativeSelect
+                id='type'
+                className='w-full'
+                value={(bien.type as string) ?? ''}
+                onChange={(e) => set('type', e.target.value || null)}
+              >
                 <NativeSelectOption value=''>À choisir</NativeSelectOption>
                 {TYPES_BIEN.map(([v, l]) => (
                   <NativeSelectOption key={v} value={v}>
@@ -175,12 +239,18 @@ export function SaisieForm() {
                 <Label htmlFor={`s-${key}`} className='text-muted-foreground text-xs'>
                   {label}
                 </Label>
-                <Input id={`s-${key}`} value={(bien[key] as string) ?? ''} onChange={(e) => set(key, e.target.value || null)} />
+                <Input
+                  id={`s-${key}`}
+                  value={(bien[key] as string) ?? ''}
+                  onChange={(e) => set(key, e.target.value || null)}
+                />
               </div>
             ))}
           </div>
           {!bien.ville && !bien.code_postal && (
-            <p className='text-warn mt-2 text-xs'>Sans ville ni code postal, l’estimation DVF ne pourra pas se lancer.</p>
+            <p className='text-warn mt-2 text-xs'>
+              Sans ville ni code postal, l’estimation DVF ne pourra pas se lancer.
+            </p>
           )}
         </Section>
 
@@ -229,7 +299,9 @@ export function SaisieForm() {
               </div>
             ))}
           </div>
-          <p className='text-muted-foreground mt-3 text-xs'>Laissez le nom vide pour ne pas créer de contact.</p>
+          <p className='text-muted-foreground mt-3 text-xs'>
+            Laissez le nom vide pour ne pas créer de contact.
+          </p>
         </Section>
       </div>
 
@@ -248,23 +320,32 @@ export function SaisieForm() {
           >
             {saving ? 'Enregistrement…' : 'Enregistrer le bien'}
           </Button>
-          <Button variant='ghost' className='w-full' onClick={() => setBien(null)} disabled={saving}>
+          <Button
+            variant='ghost'
+            className='w-full'
+            onClick={() => setBien(null)}
+            disabled={saving}
+          >
             Revenir à la note
           </Button>
           <p className='text-muted-foreground text-xs'>
-            Le bien est créé au statut « Estimation », ajouté à la file Laforêt, puis estimé à partir des ventes DVF.
+            Le bien est créé au statut « Estimation », ajouté à la file Laforêt, puis estimé à
+            partir des ventes DVF.
           </p>
         </div>
 
         {lecture.a_verifier.length > 0 && (
           <section className='border-cuivre/40 bg-cuivre/10 rounded-2xl border p-4 sm:p-5'>
             <h2 className='font-display text-cuivre mb-3 flex items-center gap-2 text-[17px] font-semibold'>
-              <Icons.warning className='size-[18px]' aria-hidden='true' /> À vérifier ({lecture.a_verifier.length})
+              <Icons.warning className='size-[18px]' aria-hidden='true' /> À vérifier (
+              {lecture.a_verifier.length})
             </h2>
             <ul className='space-y-2 text-sm'>
               {lecture.a_verifier.map((q, i) => (
                 <li key={i}>
-                  <span className='text-muted-foreground font-mono text-[11px] uppercase'>{q.champ}</span>
+                  <span className='text-muted-foreground font-mono text-[11px] uppercase'>
+                    {q.champ}
+                  </span>
                   <p>{q.question}</p>
                 </li>
               ))}
@@ -276,7 +357,9 @@ export function SaisieForm() {
           <p className='text-sm'>{lecture.synthese}</p>
           <div className='mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-1'>
             <div>
-              <h3 className='text-ok mb-1.5 text-xs font-semibold tracking-[0.12em] uppercase'>Points forts</h3>
+              <h3 className='text-ok mb-1.5 text-xs font-semibold tracking-[0.12em] uppercase'>
+                Points forts
+              </h3>
               <ul className='list-disc space-y-1 pl-4 text-sm'>
                 {lecture.points_forts.map((p, i) => (
                   <li key={i}>{p}</li>
@@ -284,7 +367,9 @@ export function SaisieForm() {
               </ul>
             </div>
             <div>
-              <h3 className='text-warn mb-1.5 text-xs font-semibold tracking-[0.12em] uppercase'>Points de vigilance</h3>
+              <h3 className='text-warn mb-1.5 text-xs font-semibold tracking-[0.12em] uppercase'>
+                Points de vigilance
+              </h3>
               <ul className='list-disc space-y-1 pl-4 text-sm'>
                 {lecture.points_faibles.map((p, i) => (
                   <li key={i}>{p}</li>

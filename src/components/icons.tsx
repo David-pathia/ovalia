@@ -1,4 +1,6 @@
 import {
+  IconMicrophone,
+  IconPlayerStopFilled,
   IconBrandWhatsapp,
   IconMapPin,
   IconMenu2,
@@ -145,6 +147,8 @@ export const Icons = {
   help: IconHelpCircle,
   info: IconInfoCircle,
   spinner: IconLoader2,
+  mic: IconMicrophone,
+  stop: IconPlayerStopFilled,
   search: IconSearch,
   settings: IconSettings,
   trash: IconTrash,

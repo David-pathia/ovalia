@@ -8,9 +8,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Icons } from '@/components/icons';
 import { GroupFields, ManquantsPanel, ReleveTable, Section } from './fiche-fields';
+import { DicteeFiche } from '@/features/dictee/components/dictee-fiche';
 import { cn } from '@/lib/utils';
 import { marquerPointVerifie, mettreAJourBien, supprimerBien } from '../actions';
-import { BIEN_GROUPS, champsManquants, type AVerifier, type BienValues, type PieceInput, type VendeurInput } from '../fields';
+import {
+  BIEN_GROUPS,
+  champsManquants,
+  type AVerifier,
+  type BienValues,
+  type PieceInput,
+  type VendeurInput
+} from '../fields';
 
 export type Analyse = {
   id: string;
@@ -18,7 +26,11 @@ export type Analyse = {
   points_forts: string[];
   points_faibles: string[];
   a_verifier: AVerifier[];
-  laforet_extra: { chauffage?: string | null; equipements?: string[]; loyer_potentiel?: number | null };
+  laforet_extra: {
+    chauffage?: string | null;
+    equipements?: string[];
+    loyer_potentiel?: number | null;
+  };
 };
 
 const fmt = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 });
@@ -46,7 +58,14 @@ export function BienForm({
   const [ficheNa, setFicheNa] = useState<string[]>(initialNa);
   const [tente, setTente] = useState(false);
   const [vendeur, setVendeur] = useState<VendeurInput>(
-    initialVendeur ?? { civilite: null, nom: '', prenom: null, email: null, portable: null, telephone_fixe: null }
+    initialVendeur ?? {
+      civilite: null,
+      nom: '',
+      prenom: null,
+      email: null,
+      portable: null,
+      telephone_fixe: null
+    }
   );
   const [points, setPoints] = useState<AVerifier[]>(analyse?.a_verifier ?? []);
   const [dirty, setDirty] = useState(false);
@@ -65,7 +84,8 @@ export function BienForm({
   };
 
   const prix = bien.prix_bien as number | null;
-  const pct = (v: unknown) => (prix && typeof v === 'number' ? `soit ${fmt.format((v * 100) / prix)} %` : null);
+  const pct = (v: unknown) =>
+    prix && typeof v === 'number' ? `soit ${fmt.format((v * 100) / prix)} %` : null;
   const manquants = champsManquants(bien, ficheNa, pieces);
   const manquantsKeys = new Set(tente ? manquants.map((m) => m.key) : []);
   const toggleNa = (key: string) => {
@@ -111,6 +131,16 @@ export function BienForm({
   return (
     <div className='grid items-start gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]'>
       <div className='flex min-w-0 flex-col gap-5'>
+        <DicteeFiche
+          valeurs={bien}
+          pieces={pieces}
+          onAppliquer={(b, ps) => {
+            setBien(b);
+            setPieces(ps);
+            setDirty(true);
+          }}
+        />
+
         {BIEN_GROUPS.filter((g) => g.fiche).map((group) => (
           <GroupFields
             key={group.id}
@@ -142,7 +172,10 @@ export function BienForm({
             manquants={manquantsKeys}
             onChange={set}
             onToggleNa={toggleNa}
-            hints={{ hono_vendeur: pct(bien.hono_vendeur), hono_acquereur: pct(bien.hono_acquereur) }}
+            hints={{
+              hono_vendeur: pct(bien.hono_vendeur),
+              hono_acquereur: pct(bien.hono_acquereur)
+            }}
           />
         ))}
 
@@ -186,16 +219,23 @@ export function BienForm({
               {error}
             </p>
           )}
-          <Button onClick={enregistrer} disabled={saving || !dirty || (tente && manquants.length > 0)} className='h-10 w-full font-semibold'>
+          <Button
+            onClick={enregistrer}
+            disabled={saving || !dirty || (tente && manquants.length > 0)}
+            className='h-10 w-full font-semibold'
+          >
             {saving ? 'Enregistrement…' : 'Enregistrer la fiche'}
           </Button>
-          <p className='text-muted-foreground text-xs'>Chaque enregistrement part dans la file de synchronisation Laforêt.</p>
+          <p className='text-muted-foreground text-xs'>
+            Chaque enregistrement part dans la file de synchronisation Laforêt.
+          </p>
         </div>
 
         {analyse && points.length > 0 && (
           <section className='border-cuivre/40 bg-cuivre/10 rounded-2xl border p-4 sm:p-5'>
             <h2 className='font-display text-cuivre mb-3 flex items-center gap-2 text-[17px] font-semibold'>
-              <Icons.warning className='size-[18px]' aria-hidden='true' /> À vérifier · {restants} / {points.length}
+              <Icons.warning className='size-[18px]' aria-hidden='true' /> À vérifier · {restants} /{' '}
+              {points.length}
             </h2>
             <ul className='space-y-2.5 text-sm'>
               {points.map((q, i) => (
@@ -207,8 +247,13 @@ export function BienForm({
                     onChange={() => basculerPoint(i)}
                     className='accent-sauge mt-1 size-4 shrink-0 cursor-pointer'
                   />
-                  <label htmlFor={`av-${i}`} className={cn('cursor-pointer', q.traite && 'line-through opacity-55')}>
-                    <span className='text-muted-foreground block font-mono text-[11px] uppercase'>{q.champ}</span>
+                  <label
+                    htmlFor={`av-${i}`}
+                    className={cn('cursor-pointer', q.traite && 'line-through opacity-55')}
+                  >
+                    <span className='text-muted-foreground block font-mono text-[11px] uppercase'>
+                      {q.champ}
+                    </span>
                     {q.question}
                   </label>
                 </li>
@@ -237,14 +282,18 @@ export function BienForm({
                 {analyse.laforet_extra.loyer_potentiel ? (
                   <div>
                     <dt className='text-muted-foreground inline'>Loyer potentiel : </dt>
-                    <dd className='inline tabular-nums'>{fmt.format(analyse.laforet_extra.loyer_potentiel)} €/mois</dd>
+                    <dd className='inline tabular-nums'>
+                      {fmt.format(analyse.laforet_extra.loyer_potentiel)} €/mois
+                    </dd>
                   </div>
                 ) : null}
               </dl>
             )}
             <div className='mt-4 space-y-4'>
               <div>
-                <h3 className='text-ok mb-1.5 text-xs font-semibold tracking-[0.12em] uppercase'>Points forts</h3>
+                <h3 className='text-ok mb-1.5 text-xs font-semibold tracking-[0.12em] uppercase'>
+                  Points forts
+                </h3>
                 <ul className='list-disc space-y-1 pl-4 text-sm'>
                   {analyse.points_forts.map((p, i) => (
                     <li key={i}>{p}</li>
@@ -252,7 +301,9 @@ export function BienForm({
                 </ul>
               </div>
               <div>
-                <h3 className='text-warn mb-1.5 text-xs font-semibold tracking-[0.12em] uppercase'>Points de vigilance</h3>
+                <h3 className='text-warn mb-1.5 text-xs font-semibold tracking-[0.12em] uppercase'>
+                  Points de vigilance
+                </h3>
                 <ul className='list-disc space-y-1 pl-4 text-sm'>
                   {analyse.points_faibles.map((p, i) => (
                     <li key={i}>{p}</li>
@@ -266,7 +317,10 @@ export function BienForm({
         <div className='rounded-2xl border border-dashed p-4'>
           {confirmDelete ? (
             <div className='space-y-3'>
-              <p className='text-sm'>Supprimer définitivement ce bien, ses pièces et son analyse ? Le vendeur reste dans les contacts.</p>
+              <p className='text-sm'>
+                Supprimer définitivement ce bien, ses pièces et son analyse ? Le vendeur reste dans
+                les contacts.
+              </p>
               <div className='flex gap-2'>
                 <Button
                   variant='destructive'
@@ -286,7 +340,11 @@ export function BienForm({
               </div>
             </div>
           ) : (
-            <Button variant='ghost' className='text-muted-foreground w-full' onClick={() => setConfirmDelete(true)}>
+            <Button
+              variant='ghost'
+              className='text-muted-foreground w-full'
+              onClick={() => setConfirmDelete(true)}
+            >
               <Icons.trash /> Supprimer ce bien
             </Button>
           )}

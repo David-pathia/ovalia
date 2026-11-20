@@ -74,6 +74,16 @@ classif_projet `court_terme | moyen_terme | long_terme`. Champs Laforêt non mod
 - Nombres : remplacer l'espace fine U+202F (absente de la police) ; préciser `lineHeight` sur les textes > 10 pt.
 - Ne jamais committer de PDF ou de données de clients réels.
 
+## Dictée (src/features/dictee, /api/dictee)
+- Bouton « Dicter » : saisie rapide (texte ajouté à la note) et fiche bien / fiche de la saisie (« Dicter des informations »).
+- Navigateur : micro avec suppression de bruit et d'écho, 2 min max, converti en WAV 16 kHz mono (`enregistreur.ts`) puis envoyé
+  en corps brut à `/api/dictee` (limite Vercel 4,5 Mo ; les actions serveur sont limitées à 1 Mo).
+- Transcription (`src/lib/ai/dictee.ts`) : Vercel AI Gateway `/v4/ai/transcription-model`, modèle `openai/gpt-transcribe`
+  (`DICTEE_MODELE` pour en changer), repli sur `google/gemini-3-flash` ; clé `AI_GATEWAY_API_KEY`. Audio jamais stocké.
+- Lecture IA (`actions.ts`, consigne de la saisie rapide) → propositions champ par champ (`propositions.ts`, pur) que le
+  conseiller coche ; textes libres ajoutés à la suite, listes complétées, pièces ajoutées ou mises à jour. Rien n'est
+  enregistré sans clic sur « Enregistrer ».
+
 ## Prospects et rapprochements (src/features/prospects, src/lib/rapprochement)
 - Import du « tableau de pilotage » de Julien (onglet Prospection acheteur, `excel.ts` avec exceljs) depuis `/dashboard/prospects` :
   analyse → aperçu (nouveaux, modifiés, inchangés, absents) → validation. Reconnaissance par nom normalisé (`cleNom`) puis
