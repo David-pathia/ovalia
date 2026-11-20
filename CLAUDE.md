@@ -98,6 +98,13 @@ classif_projet `court_terme | moyen_terme | long_terme`. Champs Laforêt non mod
   Tableau de bord et validation des témoignages : `/dashboard/avis-clients`. Aucune publication automatique.
 - À venir : demande d'estimation → prospect, réservation de rendez-vous, questionnaire sur le bien visité.
 
+## Boîte mail (src/lib/mail, src/features/mails, /dashboard/mails)
+- La messagerie Laforêt est un serveur **BlueMind en IMAP** (`messagerie.laforet.com:993`), pas Microsoft 365.
+- L'utilisateur saisit adresse et mot de passe dans Ovalia : vérifiés auprès du serveur, puis mot de passe chiffré
+  (AES-256-GCM, `src/lib/mail/chiffrement.ts`, clé `JETONS_CHIFFREMENT_CLE`) dans `comptes_mail` (migration 20261120110000).
+- Boîte ouverte en lecture seule (`readOnly`) : 30 derniers mails, aperçu tiré des 24 premiers Ko ; rien n'est copié ni marqué lu.
+- Plus tard : tri, résumés et brouillons IA ; envoi via SMTP `messagerie.laforet.com`.
+
 ## Sécurité
 - `src/proxy.ts` → `src/lib/supabase/session.ts` : toute route hors `/connexion` et `/auth` exige une session.
   Sans variables Supabase, tout est fermé.

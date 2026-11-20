@@ -1,7 +1,7 @@
 import 'server-only';
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
 
-// Chiffrement des jetons Microsoft avant stockage (AES-256-GCM).
+// Chiffrement des secrets de messagerie avant stockage (AES-256-GCM).
 // Clé : variable JETONS_CHIFFREMENT_CLE (au moins 32 caractères aléatoires), jamais dans le code.
 
 function cle() {

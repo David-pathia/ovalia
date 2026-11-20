@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
       './src/features/avis/assets/**'
     ]
   },
-  serverExternalPackages: ['@react-pdf/renderer', 'exceljs'],
+  serverExternalPackages: ['@react-pdf/renderer', 'exceljs', 'imapflow', 'mailparser'],
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error', 'warn'] } : false
   }
