@@ -9,32 +9,89 @@ export const navGroups: NavGroup[] = [
     label: '',
     items: [
       { title: "Aujourd'hui", url: '/dashboard', icon: 'today', shortcut: ['a', 'a'], items: [] },
-      { title: 'Saisie rapide', url: '/dashboard/saisie', icon: 'sparkles', shortcut: ['s', 's'], items: [] }
+      {
+        title: 'Saisie rapide',
+        url: '/dashboard/saisie',
+        icon: 'sparkles',
+        shortcut: ['s', 's'],
+        items: []
+      }
     ]
   },
   {
     label: 'Portefeuille',
     items: [
       { title: 'Biens', url: '/dashboard/biens', icon: 'bien', shortcut: ['b', 'b'], items: [] },
-      { title: 'Prospects', url: '/dashboard/prospects', icon: 'teams', shortcut: ['p', 'p'], items: [] },
-      { title: 'Rapprochements', url: '/dashboard/rapprochements', icon: 'rapprochement', shortcut: ['r', 'r'], items: [] }
+      {
+        title: 'Prospects',
+        url: '/dashboard/prospects',
+        icon: 'teams',
+        shortcut: ['p', 'p'],
+        items: []
+      },
+      {
+        title: 'Rapprochements',
+        url: '/dashboard/rapprochements',
+        icon: 'rapprochement',
+        shortcut: ['r', 'r'],
+        items: []
+      }
     ]
   },
   {
     label: 'Expertise',
     items: [
-      { title: 'Marché', url: '/dashboard/marche', icon: 'marche', shortcut: ['m', 'k'], items: [] },
-      { title: 'Estimations', url: '/dashboard/estimations', icon: 'estimation', shortcut: ['e', 'e'], label: 'Bientôt', items: [] },
-      { title: 'Avis de valeur', url: '/dashboard/avis-de-valeur', icon: 'avisValeur', label: 'Bientôt', items: [] },
-      { title: 'Mandats', url: '/dashboard/mandats', icon: 'mandat', shortcut: ['m', 'm'], label: 'Bientôt', items: [] },
-      { title: 'Travaux', url: '/dashboard/travaux', icon: 'travaux', shortcut: ['t', 'r'], label: 'Bientôt', items: [] }
+      {
+        title: 'Marché',
+        url: '/dashboard/marche',
+        icon: 'marche',
+        shortcut: ['m', 'k'],
+        items: []
+      },
+      {
+        title: 'Estimations',
+        url: '/dashboard/estimations',
+        icon: 'estimation',
+        shortcut: ['e', 'e'],
+        label: 'Bientôt',
+        items: []
+      },
+      {
+        title: 'Avis de valeur',
+        url: '/dashboard/avis-de-valeur',
+        icon: 'avisValeur',
+        label: 'Bientôt',
+        items: []
+      },
+      {
+        title: 'Mandats',
+        url: '/dashboard/mandats',
+        icon: 'mandat',
+        shortcut: ['m', 'm'],
+        label: 'Bientôt',
+        items: []
+      },
+      {
+        title: 'Travaux',
+        url: '/dashboard/travaux',
+        icon: 'travaux',
+        shortcut: ['t', 'r'],
+        label: 'Bientôt',
+        items: []
+      }
     ]
   },
   {
     label: 'Communication',
     items: [
-      { title: 'Boîte mail', url: '/dashboard/mails', icon: 'mail', label: 'Bientôt', items: [] },
-      { title: 'LinkedIn', url: '/dashboard/linkedin', icon: 'linkedin', label: 'Bientôt', items: [] },
+      { title: 'Boîte mail', url: '/dashboard/mails', icon: 'mail', items: [] },
+      {
+        title: 'LinkedIn',
+        url: '/dashboard/linkedin',
+        icon: 'linkedin',
+        label: 'Bientôt',
+        items: []
+      },
       { title: 'Mini-site', url: '/dashboard/mini-site', icon: 'site', items: [] },
       { title: 'Avis clients', url: '/dashboard/avis-clients', icon: 'badgeCheck', items: [] }
     ]
@@ -43,14 +100,21 @@ export const navGroups: NavGroup[] = [
     label: 'Réglages',
     items: [
       { title: 'Taux de crédit', url: '/dashboard/taux', icon: 'creditCard', items: [] },
-      { title: 'Synchronisation Laforêt', url: '/dashboard/laforet', icon: 'sync', label: 'Bientôt', items: [] }
+      {
+        title: 'Synchronisation Laforêt',
+        url: '/dashboard/laforet',
+        icon: 'sync',
+        label: 'Bientôt',
+        items: []
+      }
     ]
   }
 ];
 
 /** Descriptions affichées sur les pages des modules à venir. */
 export const moduleDescriptions: Record<string, string> = {
-  biens: 'Fiches biens au format Laforêt : prix et honoraires, mandat, pièces, photos, diffusion et synchronisation.',
+  biens:
+    'Fiches biens au format Laforêt : prix et honoraires, mandat, pièces, photos, diffusion et synchronisation.',
   contacts:
     'Fiches contacts (vendeurs, demandeurs) et projets de recherche : budget, communes, surface, pièces.',
   rapprochements:
