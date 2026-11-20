@@ -119,8 +119,9 @@ classif_projet `court_terme | moyen_terme | long_terme`. Champs Laforêt non mod
   fusionner lui-même ses pull requests. Habitude conseillée : une branche par sujet (`julien/<sujet>` ou `david/<sujet>`),
   committer, pousser la branche, ouvrir une pull request, tester sa version Vercel (« Preview »), puis fusionner.
   Avant de travailler : revenir sur `main` et le mettre à jour (`git pull`).
-- Migrations SQL : toujours écrire le fichier dans `supabase/migrations/` (committé avec le code). Julien ou David
-  l'exécute dans Supabase (SQL Editor) **avant** de fusionner le code qui en dépend, et le signale dans la PR.
+- Migrations SQL : toujours écrire le fichier dans `supabase/migrations/` (committé avec le code). Seul David a accès
+  à Supabase : une PR qui contient une migration ne se fusionne pas seule ; la signaler à David, qui l'exécute
+  (SQL Editor) **avant** la fusion du code qui en dépend.
 - Ne jamais committer `.env.local`, de clé API, de mot de passe ni de données de clients ou de prospects.
 - Avant de proposer une PR : `npx tsc --noEmit -p .` sans erreur, et `npx oxfmt --write` sur les fichiers modifiés.
 
