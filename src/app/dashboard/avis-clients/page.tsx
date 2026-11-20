@@ -14,6 +14,7 @@ export const metadata: Metadata = { title: 'Avis clients' };
 type Avis = Record<CleNote, number | null> & {
   id: string;
   prenom: string | null;
+  nom: string | null;
   canal: string | null;
   commentaire: string | null;
   publication_autorisee: boolean;
@@ -253,7 +254,8 @@ export default async function AvisClientsPage() {
                     <div className='flex flex-wrap items-start justify-between gap-2'>
                       <div>
                         <p className='font-medium'>
-                          {a.prenom ?? (a.canal === 'qr' ? 'Lien général (QR code)' : 'Client')}
+                          {[a.prenom, a.nom].filter(Boolean).join(' ') ||
+                            (a.canal === 'qr' ? 'Lien général (QR code)' : 'Client')}
                           {a.biens && (
                             <span className='text-muted-foreground font-normal'>
                               {' '}
