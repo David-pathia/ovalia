@@ -115,11 +115,12 @@ classif_projet `court_terme | moyen_terme | long_terme`. Champs Laforêt non mod
 - La même liste de champs sert au formulaire, à la validation Zod et au brouillon renvoyé par l'IA.
 
 ## Travail à plusieurs (Julien et David)
-- Ne jamais pousser sur `main` : `main` = production (déploiement Vercel automatique). Toujours créer une branche
-  (`julien/<sujet>` ou `david/<sujet>`), committer, pousser la branche et ouvrir une pull request ; David relit et fusionne.
-- Chaque pull request a sa version de test Vercel (« Preview ») : la donner à tester avant fusion.
-- Pas de migration SQL appliquée par soi-même : écrire le fichier dans `supabase/migrations/` et le signaler dans la PR ;
-  David l'exécute dans Supabase.
+- `main` = production (déploiement Vercel automatique). Julien et David ont tous deux un accès complet : chacun peut
+  fusionner lui-même ses pull requests. Habitude conseillée : une branche par sujet (`julien/<sujet>` ou `david/<sujet>`),
+  committer, pousser la branche, ouvrir une pull request, tester sa version Vercel (« Preview »), puis fusionner.
+  Avant de travailler : revenir sur `main` et le mettre à jour (`git pull`).
+- Migrations SQL : toujours écrire le fichier dans `supabase/migrations/` (committé avec le code). Julien ou David
+  l'exécute dans Supabase (SQL Editor) **avant** de fusionner le code qui en dépend, et le signale dans la PR.
 - Ne jamais committer `.env.local`, de clé API, de mot de passe ni de données de clients ou de prospects.
 - Avant de proposer une PR : `npx tsc --noEmit -p .` sans erreur, et `npx oxfmt --write` sur les fichiers modifiés.
 
