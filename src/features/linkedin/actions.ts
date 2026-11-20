@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { anthropicConfigured } from '@/lib/ai/client';
 import { proposerIdees, redigerPost, TONS_LINKEDIN, type IdeePost } from '@/lib/ai/linkedin';
-import { ErreurTypefully, compteLinkedin, creerPost, supprimerPost } from '@/lib/typefully';
+import { ErreurTypefully, compteLinkedin, enregistrerPost, supprimerPost } from '@/lib/typefully';
 
 type Resultat<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 
@@ -97,21 +97,30 @@ const Envoi = z.object({
     .trim()
     .min(1, 'Le post est vide.')
     .max(3000, 'LinkedIn limite un post à 3 000 caractères.'),
-  quand: z.union([z.enum(['brouillon', 'prochain']), z.iso.datetime({ offset: true })]),
-  premierCommentaire: z.string().trim().max(1250).optional()
+  quand: z.union([
+    z.enum(['brouillon', 'prochain', 'maintenant']),
+    z.iso.datetime({ offset: true })
+  ]),
+  premierCommentaire: z.string().trim().max(1250).optional(),
+  id: z.number().int().positive().optional()
 });
 
-/** Envoie le post dans Typefully : brouillon, prochain créneau ou date choisie. */
+/**
+ * Envoie le post dans Typefully : brouillon, prochain créneau, date choisie ou publication immédiate.
+ * Avec id : modifie un brouillon ou un post programmé existant.
+ */
 export async function envoyerVersTypefully(
   texte: string,
   quand: string,
-  premierCommentaire?: string
+  premierCommentaire?: string,
+  id?: number
 ): Promise<Resultat> {
   if (!(await connecte())) return { ok: false, error: 'Session expirée : reconnectez-vous.' };
   const parsed = Envoi.safeParse({
     texte,
     quand,
-    premierCommentaire: premierCommentaire || undefined
+    premierCommentaire: premierCommentaire || undefined,
+    id
   });
   if (!parsed.success)
     return { ok: false, error: parsed.error.issues[0]?.message ?? 'Saisie invalide.' };
@@ -122,11 +131,12 @@ export async function envoyerVersTypefully(
     return { ok: false, error: 'Choisissez une date et une heure à venir.' };
   try {
     const { socialSetId } = await compteLinkedin();
-    await creerPost(
+    await enregistrerPost(
       socialSetId,
       parsed.data.texte,
       parsed.data.quand,
-      parsed.data.premierCommentaire
+      parsed.data.premierCommentaire,
+      parsed.data.id
     );
   } catch (e) {
     return { ok: false, error: message(e, 'L’envoi vers Typefully a échoué.') };

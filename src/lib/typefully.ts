@@ -153,32 +153,48 @@ export async function listerPosts(socialSetId: number, statut: StatutPost, limit
   return r.results.map(versPost).filter((p) => p.texte);
 }
 
+/** Un post complet (la liste de Typefully ne donne qu'un aperçu tronqué). */
+export async function lirePost(socialSetId: number, id: number) {
+  const d = await appel<
+    DraftBrut & {
+      platforms?: { linkedin?: { settings?: { first_comment?: string | null } | null } | null };
+    }
+  >(`/social-sets/${socialSetId}/drafts/${id}`);
+  return {
+    ...versPost(d),
+    premierCommentaire: d.platforms?.linkedin?.settings?.first_comment ?? ''
+  };
+}
+
 /**
- * Envoie un post LinkedIn dans Typefully.
- * quand = 'brouillon' (rien n'est publié), 'prochain' (prochain créneau de la file Typefully)
+ * Envoie un post LinkedIn dans Typefully (nouveau, ou modification si id est fourni).
+ * quand = 'brouillon' (rien n'est publié ; en modification, la date éventuelle est gardée),
+ * 'prochain' (prochain créneau de la file Typefully), 'maintenant' (publication immédiate)
  * ou une date ISO avec fuseau (publication programmée).
  */
-export async function creerPost(
+export async function enregistrerPost(
   socialSetId: number,
   texte: string,
-  quand: 'brouillon' | 'prochain' | string,
-  premierCommentaire?: string
+  quand: 'brouillon' | 'prochain' | 'maintenant' | string,
+  premierCommentaire?: string,
+  id?: number
 ) {
   const corps: Record<string, unknown> = {
     platforms: {
       linkedin: {
         enabled: true,
         posts: [{ text: texte }],
-        ...(premierCommentaire ? { settings: { first_comment: premierCommentaire } } : {})
+        settings: { first_comment: premierCommentaire || null }
       }
     }
   };
   if (quand === 'prochain') corps.publish_at = 'next-free-slot';
+  else if (quand === 'maintenant') corps.publish_at = 'now';
   else if (quand !== 'brouillon') corps.publish_at = quand;
-  const d = await appel<DraftBrut>(`/social-sets/${socialSetId}/drafts`, {
-    method: 'POST',
-    body: JSON.stringify(corps)
-  });
+  const d = await appel<DraftBrut>(
+    id ? `/social-sets/${socialSetId}/drafts/${id}` : `/social-sets/${socialSetId}/drafts`,
+    { method: id ? 'PATCH' : 'POST', body: JSON.stringify(corps) }
+  );
   return versPost(d);
 }
 

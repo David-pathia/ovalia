@@ -1,17 +1,19 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { Icons } from '@/components/icons';
 import { anthropicConfigured } from '@/lib/ai/client';
 import {
   ErreurTypefully,
   TYPEFULLY_APP,
   compteLinkedin,
+  lirePost,
   listerPosts,
   typefullyConfigure,
   type CompteLinkedin,
   type PostTypefully
 } from '@/lib/typefully';
 import { Panel } from '@/features/today/components/panel';
-import { Atelier } from '@/features/linkedin/components/atelier';
+import { Atelier, type PostAModifier } from '@/features/linkedin/components/atelier';
 import { SupprimerPost } from '@/features/linkedin/components/supprimer-post';
 
 export const metadata: Metadata = { title: 'LinkedIn' };
@@ -61,6 +63,16 @@ function ListePosts({
                 <Icons.externalLink className='size-4' />
               </a>
             )}
+            {supprimable && (
+              <Link
+                href={`/dashboard/linkedin?modifier=${p.id}#atelier`}
+                className='text-muted-foreground hover:text-foreground mt-1 shrink-0'
+                aria-label='Modifier'
+                title='Modifier'
+              >
+                <Icons.edit className='size-4' />
+              </Link>
+            )}
             {supprimable && <SupprimerPost id={p.id} />}
           </li>
         );
@@ -69,7 +81,13 @@ function ListePosts({
   );
 }
 
-export default async function LinkedinPage() {
+export default async function LinkedinPage({
+  searchParams
+}: {
+  searchParams: Promise<{ modifier?: string }>;
+}) {
+  const idModifier = Number((await searchParams).modifier) || null;
+  let aModifier: PostAModifier | null = null;
   const configure = typefullyConfigure();
   let compte: CompteLinkedin | null = null;
   let programmes: PostTypefully[] = [];
@@ -80,6 +98,16 @@ export default async function LinkedinPage() {
   if (configure) {
     try {
       compte = await compteLinkedin();
+      if (idModifier) {
+        const p = await lirePost(compte.socialSetId, idModifier);
+        if (p.statut === 'draft' || p.statut === 'scheduled' || p.statut === 'planned')
+          aModifier = {
+            id: p.id,
+            texte: p.texte,
+            premierCommentaire: p.premierCommentaire,
+            programmeLe: p.programmeLe
+          };
+      }
       [programmes, brouillons, publies] = await Promise.all([
         listerPosts(compte.socialSetId, 'scheduled'),
         listerPosts(compte.socialSetId, 'draft', 10),
@@ -136,7 +164,12 @@ export default async function LinkedinPage() {
         </section>
       )}
 
-      <Atelier typefullyPret={Boolean(compte)} iaPrete={anthropicConfigured()} />
+      <Atelier
+        key={aModifier?.id ?? 'nouveau'}
+        typefullyPret={Boolean(compte)}
+        iaPrete={anthropicConfigured()}
+        aModifier={aModifier}
+      />
 
       {compte && (
         <div className='grid gap-4 lg:grid-cols-3'>

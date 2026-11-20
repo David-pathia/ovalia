@@ -18,17 +18,57 @@ const MAX = 3000;
 // Au-delà, LinkedIn coupe le texte derrière « … voir plus ».
 const APERCU = 210;
 
-/** Idées (IA) → rédaction (IA ou à la main) → envoi dans Typefully (brouillon ou programmation). */
-export function Atelier({ typefullyPret, iaPrete }: { typefullyPret: boolean; iaPrete: boolean }) {
+export type PostAModifier = {
+  id: number;
+  texte: string;
+  premierCommentaire: string;
+  programmeLe: string | null;
+};
+
+type Quand = 'brouillon' | 'prochain' | 'date' | 'maintenant';
+
+/** Valeur pour <input type='datetime-local'> à l'heure de Paris. */
+function versChampDate(iso: string) {
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat('fr-FR', {
+      timeZone: 'Europe/Paris',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23'
+    })
+      .formatToParts(new Date(iso))
+      .map((x) => [x.type, x.value])
+  );
+  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
+}
+
+/**
+ * Idées (IA) → rédaction (IA ou à la main) → envoi dans Typefully (brouillon, programmation ou
+ * publication immédiate). Avec aModifier : modification d'un brouillon ou d'un post programmé.
+ */
+export function Atelier({
+  typefullyPret,
+  iaPrete,
+  aModifier
+}: {
+  typefullyPret: boolean;
+  iaPrete: boolean;
+  aModifier?: PostAModifier | null;
+}) {
   const router = useRouter();
   const [theme, setTheme] = useState('');
   const [idees, setIdees] = useState<IdeePost[]>([]);
   const [sujet, setSujet] = useState('');
   const [ton, setTon] = useState<TonLinkedin>('proche');
-  const [texte, setTexte] = useState('');
-  const [commentaire, setCommentaire] = useState('');
-  const [quand, setQuand] = useState<'brouillon' | 'prochain' | 'date'>('brouillon');
-  const [date, setDate] = useState('');
+  const [texte, setTexte] = useState(aModifier?.texte ?? '');
+  const [commentaire, setCommentaire] = useState(aModifier?.premierCommentaire ?? '');
+  const [quand, setQuand] = useState<Quand>(aModifier?.programmeLe ? 'date' : 'brouillon');
+  const [date, setDate] = useState(
+    aModifier?.programmeLe ? versChampDate(aModifier.programmeLe) : ''
+  );
   const [chercheIdees, demarrerIdees] = useTransition();
   const [redige, demarrerRedaction] = useTransition();
   const [envoie, demarrerEnvoi] = useTransition();
@@ -56,20 +96,39 @@ export function Atelier({ typefullyPret, iaPrete }: { typefullyPret: boolean; ia
       if (!date) return void toast.error('Choisissez la date et l’heure de publication.');
       cible = new Date(date).toISOString(); // heure locale du navigateur → ISO avec fuseau
     }
+    if (
+      quand === 'maintenant' &&
+      !confirm('Publier ce post sur LinkedIn maintenant ? Il sera visible par votre réseau.')
+    )
+      return;
     demarrerEnvoi(async () => {
-      const r = await envoyerVersTypefully(texte, cible, commentaire);
+      const r = await envoyerVersTypefully(texte, cible, commentaire, aModifier?.id);
       if (!r.ok) return void toast.error(r.error);
       toast.success(
-        quand === 'brouillon'
-          ? 'Brouillon envoyé dans Typefully. Rien n’est publié.'
-          : 'Post programmé dans Typefully.'
+        quand === 'maintenant'
+          ? 'Publication lancée : le post apparaît sur LinkedIn d’ici une minute.'
+          : quand === 'brouillon'
+            ? aModifier
+              ? 'Modifications enregistrées dans Typefully.'
+              : 'Brouillon envoyé dans Typefully. Rien n’est publié.'
+            : 'Post programmé dans Typefully.'
       );
       setTexte('');
       setCommentaire('');
       setSujet('');
+      if (aModifier) router.replace('/dashboard/linkedin');
       router.refresh();
     });
   }
+
+  const libelleEnvoi =
+    quand === 'maintenant'
+      ? 'Publier maintenant'
+      : quand === 'brouillon'
+        ? aModifier
+          ? 'Enregistrer'
+          : 'Envoyer en brouillon'
+        : 'Programmer';
 
   return (
     <div className='grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]'>
@@ -119,8 +178,20 @@ export function Atelier({ typefullyPret, iaPrete }: { typefullyPret: boolean; ia
         )}
       </Panel>
 
-      <Panel title='Rédiger un post' icon={Icons.edit}>
-        <div className='grid gap-3'>
+      <Panel title={aModifier ? 'Modifier le post' : 'Rédiger un post'} icon={Icons.edit}>
+        <div id='atelier' className='grid gap-3'>
+          {aModifier && (
+            <p className='bg-secondary flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-xs'>
+              Vous modifiez un post déjà enregistré dans Typefully.
+              <Button
+                size='xs'
+                variant='ghost'
+                onClick={() => router.replace('/dashboard/linkedin')}
+              >
+                Annuler
+              </Button>
+            </p>
+          )}
           <div className='grid gap-2 sm:grid-cols-[1fr_auto_auto]'>
             <Input
               value={sujet}
@@ -192,9 +263,14 @@ export function Atelier({ typefullyPret, iaPrete }: { typefullyPret: boolean; ia
                 value={quand}
                 onChange={(e) => setQuand(e.target.value as typeof quand)}
               >
-                <option value='brouillon'>En brouillon (rien n’est publié)</option>
+                <option value='brouillon'>
+                  {aModifier
+                    ? 'Enregistrer sans rien changer d’autre'
+                    : 'En brouillon (rien n’est publié)'}
+                </option>
                 <option value='prochain'>Au prochain créneau de ma file</option>
                 <option value='date'>À une date précise</option>
+                <option value='maintenant'>Publier maintenant</option>
               </NativeSelect>
             </div>
             {quand === 'date' && (
@@ -208,7 +284,7 @@ export function Atelier({ typefullyPret, iaPrete }: { typefullyPret: boolean; ia
             )}
             <Button onClick={envoyer} disabled={!typefullyPret || envoie || !texte.trim()}>
               {envoie ? <Icons.spinner className='animate-spin' /> : <Icons.send />}
-              {quand === 'brouillon' ? 'Envoyer en brouillon' : 'Programmer'}
+              {libelleEnvoi}
             </Button>
             <Button
               variant='ghost'
