@@ -103,7 +103,12 @@ classif_projet `court_terme | moyen_terme | long_terme`. Champs Laforêt non mod
 - L'utilisateur saisit adresse et mot de passe dans Ovalia : vérifiés auprès du serveur, puis mot de passe chiffré
   (AES-256-GCM, `src/lib/mail/chiffrement.ts`, clé `JETONS_CHIFFREMENT_CLE`) dans `comptes_mail` (migration 20261120110000).
 - Boîte ouverte en lecture seule (`readOnly`) : 30 derniers mails, aperçu tiré des 24 premiers Ko ; rien n'est copié ni marqué lu.
-- Plus tard : tri, résumés et brouillons IA ; envoi via SMTP `messagerie.laforet.com`.
+- « Trier ma boîte » (`src/features/mails/tri.ts`, `src/lib/ai/tri-mails.ts`, types `tri-types.ts`) : mails reçus des 10 derniers
+  jours (60 max, historique cité retiré) + en-têtes des mails envoyés, croisés avec biens et vendeurs, acquéreurs, rapprochements
+  et tâches/visites. Catégories : urgent (48 h), échéance, réponse à valider (brouillon), rapprochement, relance, info ; 3 priorités ;
+  bilan de la semaine (proposé le vendredi). En-têtes affichés repris du serveur, jamais de l'IA. Rien n'est enregistré
+  (dernier tri gardé dans le localStorage du navigateur) ; brouillons copiés ou ouverts via `mailto:`, jamais envoyés par Ovalia.
+- Plus tard : envoi via SMTP `messagerie.laforet.com`, tri automatique chaque matin (il faudra alors stocker le tri).
 
 ## Sécurité
 - `src/proxy.ts` → `src/lib/supabase/session.ts` : toute route hors `/connexion` et `/auth` exige une session.

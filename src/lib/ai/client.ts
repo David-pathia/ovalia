@@ -44,3 +44,29 @@ export async function demanderTexte(system: string, contenu: string) {
     texte: response.content.map((b) => (b.type === 'text' ? b.text : '')).join('')
   };
 }
+
+/**
+ * Variante en flux pour les longues réponses (tri de la boîte mail…) : évite les délais
+ * d'attente HTTP quand la réponse dépasse quelques milliers de mots.
+ */
+export async function demanderTexteLong(
+  system: string,
+  contenu: string,
+  { maxTokens = 32000, effort = 'medium' as 'low' | 'medium' | 'high' } = {}
+) {
+  const response = await anthropicClient()
+    .beta.messages.stream({
+      model: MODEL,
+      max_tokens: maxTokens,
+      betas: ['server-side-fallback-2026-07-01'],
+      fallbacks: 'default',
+      output_config: { effort },
+      system,
+      messages: [{ role: 'user', content: contenu }]
+    })
+    .finalMessage();
+  return {
+    stopReason: response.stop_reason,
+    texte: response.content.map((b) => (b.type === 'text' ? b.text : '')).join('')
+  };
+}

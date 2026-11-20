@@ -12,9 +12,11 @@ import {
 } from '@/lib/mail/imap';
 import { ConnexionBoite } from '@/features/mails/components/connexion';
 import { Deconnecter } from '@/features/mails/components/deconnecter';
+import { TriBoite } from '@/features/mails/components/tri-boite';
 
 export const metadata: Metadata = { title: 'Boîte mail' };
-export const maxDuration = 60;
+// Le tri IA de la boîte (bouton « Trier ma boîte ») peut prendre une à deux minutes.
+export const maxDuration = 300;
 
 const jour = (x: Date) => x.toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' });
 
@@ -110,64 +112,68 @@ export default async function MailsPage() {
       ) : mails.length === 0 ? (
         <p className='text-muted-foreground text-sm'>Aucun mail dans la boîte de réception.</p>
       ) : (
-        <section className='bg-card rounded-2xl border'>
-          <ul className='divide-y'>
-            {mails.map((m) => (
-              <li key={m.uid}>
-                <details className='group'>
-                  <summary className='hover:bg-muted/50 flex cursor-pointer list-none gap-3 px-4 py-3 sm:px-5'>
-                    <span
-                      className={cn(
-                        'mt-2 size-2 shrink-0 rounded-full',
-                        m.lu ? 'bg-transparent' : 'bg-cuivre'
-                      )}
-                      aria-label={m.lu ? undefined : 'Non lu'}
-                    />
-                    <span className='min-w-0 flex-1'>
-                      <span className='flex items-baseline justify-between gap-3'>
-                        <span
-                          className={cn('truncate', !m.lu && 'font-semibold')}
-                          title={m.adresse ?? undefined}
-                        >
-                          {m.de}
+        <>
+          <TriBoite />
+          <h2 className='font-display -mb-2 text-[17px] font-semibold'>Boîte de réception</h2>
+          <section className='bg-card rounded-2xl border'>
+            <ul className='divide-y'>
+              {mails.map((m) => (
+                <li key={m.uid}>
+                  <details className='group'>
+                    <summary className='hover:bg-muted/50 flex cursor-pointer list-none gap-3 px-4 py-3 sm:px-5'>
+                      <span
+                        className={cn(
+                          'mt-2 size-2 shrink-0 rounded-full',
+                          m.lu ? 'bg-transparent' : 'bg-cuivre'
+                        )}
+                        aria-label={m.lu ? undefined : 'Non lu'}
+                      />
+                      <span className='min-w-0 flex-1'>
+                        <span className='flex items-baseline justify-between gap-3'>
+                          <span
+                            className={cn('truncate', !m.lu && 'font-semibold')}
+                            title={m.adresse ?? undefined}
+                          >
+                            {m.de}
+                          </span>
+                          <span className='text-muted-foreground shrink-0 text-xs tabular-nums'>
+                            {dateCourte(m.date)}
+                          </span>
                         </span>
-                        <span className='text-muted-foreground shrink-0 text-xs tabular-nums'>
-                          {dateCourte(m.date)}
+                        <span className='flex items-center gap-1.5'>
+                          {m.important && (
+                            <Icons.alertCircle
+                              className='text-crit size-3.5 shrink-0'
+                              aria-label='Important'
+                            />
+                          )}
+                          <span className={cn('truncate text-sm', !m.lu && 'font-medium')}>
+                            {m.sujet || '(sans objet)'}
+                          </span>
+                          {m.pieceJointe && (
+                            <Icons.paperclip
+                              className='text-muted-foreground size-3.5 shrink-0'
+                              aria-label='Pièce jointe'
+                            />
+                          )}
+                        </span>
+                        <span className='text-muted-foreground line-clamp-1 text-xs group-open:hidden'>
+                          {m.apercu}
                         </span>
                       </span>
-                      <span className='flex items-center gap-1.5'>
-                        {m.important && (
-                          <Icons.alertCircle
-                            className='text-crit size-3.5 shrink-0'
-                            aria-label='Important'
-                          />
-                        )}
-                        <span className={cn('truncate text-sm', !m.lu && 'font-medium')}>
-                          {m.sujet || '(sans objet)'}
-                        </span>
-                        {m.pieceJointe && (
-                          <Icons.paperclip
-                            className='text-muted-foreground size-3.5 shrink-0'
-                            aria-label='Pièce jointe'
-                          />
-                        )}
-                      </span>
-                      <span className='text-muted-foreground line-clamp-1 text-xs group-open:hidden'>
+                    </summary>
+                    {m.apercu && (
+                      <p className='text-muted-foreground px-9 pb-3 text-xs whitespace-pre-line sm:px-10'>
                         {m.apercu}
-                      </span>
-                    </span>
-                  </summary>
-                  {m.apercu && (
-                    <p className='text-muted-foreground px-9 pb-3 text-xs whitespace-pre-line sm:px-10'>
-                      {m.apercu}
-                      {m.apercu.length >= 400 && '…'}
-                    </p>
-                  )}
-                </details>
-              </li>
-            ))}
-          </ul>
-        </section>
+                        {m.apercu.length >= 400 && '…'}
+                      </p>
+                    )}
+                  </details>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </>
       )}
     </div>
   );

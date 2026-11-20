@@ -179,3 +179,128 @@ export async function boiteDeReception(
   mails.sort((a, b) => b.date.localeCompare(a.date));
   return { compte: lu.compte, mails };
 }
+
+// ——— Lecture pour le tri IA (bouton « Trier ma boîte ») ———
+
+export type MailATrier = {
+  uid: number;
+  de: string;
+  adresse: string | null;
+  a: string[];
+  sujet: string | null;
+  date: string;
+  lu: boolean;
+  pieceJointe: boolean;
+  important: boolean;
+  texte: string;
+};
+
+export type MailEnvoye = { a: string[]; sujet: string | null; date: string };
+
+// Coupe l'historique cité (« Le … a écrit : », « De : », message transféré) : seul le nouveau texte compte.
+const CITATION =
+  /\n\s*(?:Le .{5,120} a écrit\s*:|On .{5,120} wrote:|De\s*:\s|From\s*:\s|-{2,}\s*(?:Message d'origine|Original Message|Message transféré)|_{8,})/i;
+
+function texteUtile(brut: string, max: number) {
+  const coupe = brut.split(CITATION)[0] ?? brut;
+  return coupe
+    .split('\n')
+    .filter((l) => !l.trimStart().startsWith('>'))
+    .join('\n')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+    .slice(0, max);
+}
+
+const adresses = (l?: { name?: string; address?: string }[]) =>
+  (l ?? [])
+    .map((x) => (x.name ? `${x.name} <${x.address ?? ''}>` : (x.address ?? '')))
+    .filter(Boolean);
+
+/**
+ * Mails reçus des `jours` derniers jours (les `max` plus récents, texte sans l'historique cité)
+ * et en-têtes des mails envoyés sur la même période. Lecture seule, rien n'est marqué lu.
+ */
+export async function mailsPourTri(
+  supabase: SupabaseClient,
+  ownerId: string,
+  { jours = 10, max = 60, tailleTexte = 3000 } = {}
+): Promise<{ compte: CompteMail; recus: MailATrier[]; envoyes: MailEnvoye[] } | null> {
+  if (!messagerieConfiguree()) return null;
+  const lu = await lireAcces(supabase, ownerId);
+  if (!lu) return null;
+  const imap = await connecter(lu.acces);
+  const depuis = new Date(Date.now() - jours * 86_400_000);
+  const recus: MailATrier[] = [];
+  const envoyes: MailEnvoye[] = [];
+  try {
+    await imap.mailboxOpen('INBOX', { readOnly: true });
+    const uids = ((await imap.search({ since: depuis }, { uid: true })) || []).slice(-max);
+    if (uids.length)
+      for await (const m of imap.fetch(
+        uids,
+        {
+          uid: true,
+          flags: true,
+          envelope: true,
+          internalDate: true,
+          bodyStructure: true,
+          headers: ['importance', 'x-priority'],
+          source: { maxLength: 60_000 }
+        },
+        { uid: true }
+      )) {
+        const p = m.source
+          ? await simpleParser(m.source, { skipImageLinks: true }).catch(() => null)
+          : null;
+        const de = m.envelope?.from?.[0];
+        const date = m.envelope?.date ?? m.internalDate;
+        const entetes = m.headers?.toString('utf8').toLowerCase() ?? '';
+        recus.push({
+          uid: m.uid,
+          de: de?.name || de?.address || 'Expéditeur inconnu',
+          adresse: de?.address ?? null,
+          a: adresses(m.envelope?.to),
+          sujet: m.envelope?.subject ?? null,
+          date: (date instanceof Date ? date : new Date(date ?? Date.now())).toISOString(),
+          lu: m.flags?.has('\\Seen') ?? false,
+          pieceJointe: aPieceJointe(m.bodyStructure),
+          important: /importance:\s*high|x-priority:\s*[12]/.test(entetes),
+          texte: texteUtile(p?.text ?? '', tailleTexte)
+        });
+      }
+
+    // Mails envoyés : pour savoir à quoi Julien a déjà répondu (dossier « Sent » de BlueMind).
+    const dossiers = await imap.list().catch(() => []);
+    const envoi =
+      dossiers.find((d) => d.specialUse === '\\Sent') ??
+      dossiers.find((d) => /^(sent|envoy|éléments envoyés)/i.test(d.name));
+    if (envoi) {
+      await imap.mailboxOpen(envoi.path, { readOnly: true });
+      const uidsEnvoyes = ((await imap.search({ since: depuis }, { uid: true })) || []).slice(-max);
+      if (uidsEnvoyes.length)
+        for await (const m of imap.fetch(
+          uidsEnvoyes,
+          { uid: true, envelope: true, internalDate: true },
+          { uid: true }
+        )) {
+          const date = m.envelope?.date ?? m.internalDate;
+          envoyes.push({
+            a: adresses(m.envelope?.to),
+            sujet: m.envelope?.subject ?? null,
+            date: (date instanceof Date ? date : new Date(date ?? Date.now())).toISOString()
+          });
+        }
+    }
+  } catch (e) {
+    if (e instanceof ErreurMail) throw e;
+    console.error('mails.tri.lecture', e);
+    throw new ErreurMail('serveur', 'Lecture de la boîte impossible.');
+  } finally {
+    await imap.logout().catch(() => {});
+  }
+  recus.sort((a, b) => a.date.localeCompare(b.date));
+  envoyes.sort((a, b) => a.date.localeCompare(b.date));
+  return { compte: lu.compte, recus, envoyes };
+}
