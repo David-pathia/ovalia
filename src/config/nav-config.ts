@@ -85,13 +85,7 @@ export const navGroups: NavGroup[] = [
     label: 'Communication',
     items: [
       { title: 'Boîte mail', url: '/dashboard/mails', icon: 'mail', items: [] },
-      {
-        title: 'LinkedIn',
-        url: '/dashboard/linkedin',
-        icon: 'linkedin',
-        label: 'Bientôt',
-        items: []
-      },
+      { title: 'LinkedIn', url: '/dashboard/linkedin', icon: 'linkedin', items: [] },
       { title: 'Mini-site', url: '/dashboard/mini-site', icon: 'site', items: [] },
       { title: 'Avis clients', url: '/dashboard/avis-clients', icon: 'badgeCheck', items: [] }
     ]
