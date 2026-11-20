@@ -110,6 +110,14 @@ classif_projet `court_terme | moyen_terme | long_terme`. Champs Laforêt non mod
   (dernier tri gardé dans le localStorage du navigateur) ; brouillons copiés ou ouverts via `mailto:`, jamais envoyés par Ovalia.
 - Plus tard : envoi via SMTP `messagerie.laforet.com`, tri automatique chaque matin (il faudra alors stocker le tri).
 
+## LinkedIn (src/lib/typefully.ts, src/features/linkedin, /dashboard/linkedin)
+- Publication via **Typefully** (compte de Julien, LinkedIn relié dans Typefully) : API v2 `api.typefully.com/v2`, clé personnelle
+  `TYPEFULLY_API_KEY` (Typefully → Réglages → API) ; `TYPEFULLY_SOCIAL_SET_ID` facultatif si plusieurs comptes. Jamais de scraping
+  ni d'automatisation de navigateur sur LinkedIn.
+- Idées et rédaction IA (`src/lib/ai/linkedin.ts`) à partir des biens récents (type, commune, surface, statut, prix affiché) :
+  ni nom, ni adresse, ni note interne. Envoi en brouillon (par défaut), au prochain créneau ou à une date. Rien n'est stocké dans
+  Supabase : Typefully garde brouillons, programmés et publiés.
+
 ## Sécurité
 - `src/proxy.ts` → `src/lib/supabase/session.ts` : toute route hors `/connexion` et `/auth` exige une session.
   Sans variables Supabase, tout est fermé.
