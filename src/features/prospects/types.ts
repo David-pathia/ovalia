@@ -1,5 +1,8 @@
 import type { CriteresProjet } from '@/lib/rapprochement/score';
 
+/** Contacts créés à la main (bouton « Client » du tableau de bord). */
+export const SOURCE_MANUELLE = 'saisie_manuelle';
+
 // Types partagés de l'import des prospects (aperçu côté navigateur, application côté serveur).
 
 export type ProjetImport = {
