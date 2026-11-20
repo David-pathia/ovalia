@@ -94,7 +94,9 @@ classif_projet `court_terme | moyen_terme | long_terme`. Champs Laforêt non mod
 - WhatsApp via lien `wa.me` prérempli ; QR code et liens dans `/dashboard/mini-site`.
 - Questionnaire « Votre avis compte » (`src/features/avis-clients`) : pages `/site/avis` (lien général, QR code) et
   `/site/avis/[jeton]` (lien personnel, une réponse). Table `avis_clients` + `site_config` (migration 20261112100000) ;
-  le public n'écrit que via les fonctions SQL `repondre_avis` / `avis_invitation` (security definer, aucune lecture).
+  le public n'écrit que via les fonctions SQL `deposer_avis` / `avis_invitation` (security definer, aucune lecture).
+  Parcours en 3 étapes : prénom + nom obligatoires → 5 questions → commentaire et autorisation de publication ;
+  signature publiée = prénom + initiale du nom (migration 20261120130000).
   Tableau de bord et validation des témoignages : `/dashboard/avis-clients`. Aucune publication automatique.
 - À venir : demande d'estimation → prospect, réservation de rendez-vous, questionnaire sur le bien visité.
 
