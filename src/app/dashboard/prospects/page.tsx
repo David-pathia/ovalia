@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import { NouveauClient } from '@/features/prospects/components/nouveau-client';
 import { ImportTableau } from '@/features/prospects/components/import-tableau';
-import { resumeProjet, type ProjetImport } from '@/features/prospects/types';
+import { resumeProjet, SOURCE_MANUELLE, type ProjetImport } from '@/features/prospects/types';
 import { SOURCE_IMPORT } from '@/features/prospects/import';
 
 export const metadata: Metadata = { title: 'Prospects' };
@@ -12,6 +13,7 @@ export const maxDuration = 300;
 type Ligne = {
   id: string;
   nom: string;
+  prenom: string | null;
   portable: string | null;
   archive: boolean;
   importe_le: string | null;
@@ -37,9 +39,9 @@ export default async function ProspectsPage({
   const { data, error } = await supabase
     .from('contacts')
     .select(
-      'id, nom, portable, archive, importe_le, projets(id, types_bien, budget_max, chambres_min, surface_min, zone, communes, criteres, informations, date_contact, rapprochements(id, statut))'
+      'id, nom, prenom, portable, archive, importe_le, projets(id, types_bien, budget_max, chambres_min, surface_min, zone, communes, criteres, informations, date_contact, rapprochements(id, statut))'
     )
-    .eq('source', SOURCE_IMPORT)
+    .in('source', [SOURCE_IMPORT, SOURCE_MANUELLE])
     .eq('archive', voirArchives)
     .order('nom');
   const prospects = (data ?? []) as unknown as Ligne[];
@@ -51,26 +53,29 @@ export default async function ProspectsPage({
 
   return (
     <div className='flex flex-1 flex-col gap-5 px-4 pt-2 pb-10 md:px-6 md:pt-4'>
-      <header>
-        <h1 className='font-display text-3xl font-extrabold'>Prospects acquéreurs</h1>
-        <p className='text-muted-foreground mt-1 text-sm'>
-          {voirArchives
-            ? `${prospects.length} prospect(s) archivé(s)`
-            : `${prospects.length} prospect(s) actif(s)`}
-          {dernierImport &&
-            ` · dernier import le ${new Date(dernierImport).toLocaleDateString('fr-FR')}`}{' '}
-          ·{' '}
-          <Link
-            href={voirArchives ? '/dashboard/prospects' : '/dashboard/prospects?archives=1'}
-            className='underline underline-offset-4'
-          >
-            {voirArchives ? 'voir les actifs' : 'voir les archivés'}
-          </Link>{' '}
-          ·{' '}
-          <Link href='/dashboard/rapprochements' className='underline underline-offset-4'>
-            rapprochements
-          </Link>
-        </p>
+      <header className='flex flex-wrap items-start justify-between gap-3'>
+        <div>
+          <h1 className='font-display text-3xl font-extrabold'>Prospects acquéreurs</h1>
+          <p className='text-muted-foreground mt-1 text-sm'>
+            {voirArchives
+              ? `${prospects.length} prospect(s) archivé(s)`
+              : `${prospects.length} prospect(s) actif(s)`}
+            {dernierImport &&
+              ` · dernier import le ${new Date(dernierImport).toLocaleDateString('fr-FR')}`}{' '}
+            ·{' '}
+            <Link
+              href={voirArchives ? '/dashboard/prospects' : '/dashboard/prospects?archives=1'}
+              className='underline underline-offset-4'
+            >
+              {voirArchives ? 'voir les actifs' : 'voir les archivés'}
+            </Link>{' '}
+            ·{' '}
+            <Link href='/dashboard/rapprochements' className='underline underline-offset-4'>
+              rapprochements
+            </Link>
+          </p>
+        </div>
+        {!voirArchives && <NouveauClient />}
       </header>
 
       {!voirArchives && <ImportTableau />}
@@ -97,7 +102,7 @@ export default async function ProspectsPage({
               <li key={p.id} className='flex flex-wrap items-start justify-between gap-3 px-4 py-3'>
                 <div className='min-w-0'>
                   <p className='font-medium'>
-                    {p.nom}
+                    {[p.prenom, p.nom].filter(Boolean).join(' ')}
                     {p.portable && (
                       <span className='text-muted-foreground ml-2 text-xs font-normal tabular-nums'>
                         {p.portable}
