@@ -80,6 +80,7 @@ export function DicteeFiche({
 
   return (
     <Section
+      id='dictee'
       title='Dicter des informations'
       className='border-cuivre/30'
       aside={

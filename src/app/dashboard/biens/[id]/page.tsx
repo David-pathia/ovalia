@@ -1,10 +1,17 @@
 import type { Metadata } from 'next';
 import { prixNetVendeur } from '@/lib/estimation/prix';
 import Link from 'next/link';
+import { Icons } from '@/components/icons';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { STATUTS_BIEN, TYPES_BIEN, libelle } from '@/lib/biens/options';
-import { BIEN_FIELDS, type AVerifier, type BienValues, type PieceInput, type VendeurInput } from '@/features/biens/fields';
+import {
+  BIEN_FIELDS,
+  type AVerifier,
+  type BienValues,
+  type PieceInput,
+  type VendeurInput
+} from '@/features/biens/fields';
 import { BienForm, type Analyse } from '@/features/biens/components/bien-form';
 import { EstimationPanel, type EstimationView } from '@/features/biens/components/estimation-panel';
 import type { EstimationDetails } from '@/lib/estimation/estimer';
@@ -26,9 +33,19 @@ export default async function BienPage({ params }: Props) {
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
 
   const supabase = await createClient();
-  const [{ data: bien }, { data: pieces }, { data: liens }, { data: analyses }, { data: estimations }] = await Promise.all([
+  const [
+    { data: bien },
+    { data: pieces },
+    { data: liens },
+    { data: analyses },
+    { data: estimations }
+  ] = await Promise.all([
     supabase.from('biens').select('*').eq('id', id).maybeSingle(),
-    supabase.from('bien_pieces').select('nom, longueur, largeur, surface, niveau').eq('bien_id', id).order('ordre'),
+    supabase
+      .from('bien_pieces')
+      .select('nom, longueur, largeur, surface, niveau')
+      .eq('bien_id', id)
+      .order('ordre'),
     supabase
       .from('bien_contacts')
       .select('role, contacts(id, civilite, nom, prenom, email, portable, telephone_fixe)')
@@ -58,9 +75,16 @@ export default async function BienPage({ params }: Props) {
     data: { user }
   } = await supabase.auth.getUser();
   const rapprochements = await chargerRapprochements(supabase, id).catch(() => []);
-  const { data: images } = await supabase.from('bien_images').select('*').eq('bien_id', id).order('ordre').order('created_at');
+  const { data: images } = await supabase
+    .from('bien_images')
+    .select('*')
+    .eq('bien_id', id)
+    .order('ordre')
+    .order('created_at');
   const chemins = (images ?? []).map((i) => i.storage_path as string);
-  const { data: signees } = chemins.length ? await supabase.storage.from('biens').createSignedUrls(chemins, 60 * 60) : { data: [] };
+  const { data: signees } = chemins.length
+    ? await supabase.storage.from('biens').createSignedUrls(chemins, 60 * 60)
+    : { data: [] };
   const photos: PhotoBien[] = (images ?? []).map((i) => ({
     id: i.id as string,
     url: signees?.find((x) => x.path === i.storage_path)?.signedUrl ?? null,
@@ -69,13 +93,21 @@ export default async function BienPage({ params }: Props) {
     originaleId: (i.originale_id as string | null) ?? null
   }));
 
-  const initial: BienValues = Object.fromEntries(BIEN_FIELDS.map((f) => [f.key, bien[f.key] ?? (f.kind === 'list' ? [] : f.kind === 'bool' ? false : null)]));
+  const initial: BienValues = Object.fromEntries(
+    BIEN_FIELDS.map((f) => [
+      f.key,
+      bien[f.key] ?? (f.kind === 'list' ? [] : f.kind === 'bool' ? false : null)
+    ])
+  );
   // Les colonnes numeric arrivent parfois en texte depuis PostgREST.
   for (const f of BIEN_FIELDS) {
-    if ((f.kind === 'num' || f.kind === 'int') && typeof initial[f.key] === 'string') initial[f.key] = Number(initial[f.key]);
+    if ((f.kind === 'num' || f.kind === 'int') && typeof initial[f.key] === 'string')
+      initial[f.key] = Number(initial[f.key]);
   }
 
-  const contact = (liens?.[0]?.contacts ?? null) as unknown as (VendeurInput & { id: string }) | null;
+  const contact = (liens?.[0]?.contacts ?? null) as unknown as
+    | (VendeurInput & { id: string })
+    | null;
   const a = analyses?.[0];
   const analyse: Analyse | null = a
     ? {
@@ -91,7 +123,12 @@ export default async function BienPage({ params }: Props) {
   const parametresCredit = await lireParametresCredit();
   const e = estimations?.[0];
   const estimation: EstimationView | null = e
-    ? { id: e.id, createdAt: e.created_at, argumentaire: e.synthese, details: e.details as EstimationDetails }
+    ? {
+        id: e.id,
+        createdAt: e.created_at,
+        argumentaire: e.synthese,
+        details: e.details as EstimationDetails
+      }
     : null;
   const disabledReason =
     bien.type !== 'maison' && bien.type !== 'appartement'
@@ -113,49 +150,104 @@ export default async function BienPage({ params }: Props) {
   return (
     <div className='flex flex-1 flex-col px-4 pt-2 pb-10 md:px-6 md:pt-4'>
       <header className='mb-5'>
-        <Link href='/dashboard/biens' className='text-muted-foreground hover:text-foreground text-xs'>
+        <Link
+          href='/dashboard/biens'
+          className='text-muted-foreground hover:text-foreground text-xs'
+        >
           ← Tous les biens
         </Link>
-        <h1 className='font-display mt-1 text-3xl font-extrabold'>{titre}</h1>
+        <div className='mt-1 flex flex-wrap items-center justify-between gap-3'>
+          <h1 className='font-display text-3xl font-extrabold'>{titre}</h1>
+          <a
+            href='#dictee'
+            className='border-cuivre/40 text-cuivre hover:bg-cuivre/10 inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm font-semibold'
+          >
+            <Icons.mic className='size-4' /> Dicter des informations
+          </a>
+        </div>
         <p className='text-muted-foreground mt-1 text-sm'>
-          {[bien.adresse, [bien.code_postal, bien.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ') ||
-            'Adresse à compléter'}
+          {[bien.adresse, [bien.code_postal, bien.ville].filter(Boolean).join(' ')]
+            .filter(Boolean)
+            .join(', ') || 'Adresse à compléter'}
           {' · '}
           <span className='text-sauge'>{libelle(STATUTS_BIEN, bien.statut)}</span>
         </p>
       </header>
       <div className='mb-5 flex flex-col gap-5'>
-        {user && <PhotoPrincipale key={photos.map((p) => p.id).join()} bienId={id} ownerId={user.id} photosInitiales={photos} iaDisponible={retoucheIAConfiguree()} />}
-        <EstimationPanel key={estimation?.id ?? 'aucune'} bienId={id} estimation={estimation} disabledReason={disabledReason} />
+        {user && (
+          <PhotoPrincipale
+            key={photos.map((p) => p.id).join()}
+            bienId={id}
+            ownerId={user.id}
+            photosInitiales={photos}
+            iaDisponible={retoucheIAConfiguree()}
+          />
+        )}
+        <EstimationPanel
+          key={estimation?.id ?? 'aucune'}
+          bienId={id}
+          estimation={estimation}
+          disabledReason={disabledReason}
+        />
         <FinancementPanel
           key={`fin-${estimation?.id ?? 'aucune'}`}
           parametres={parametresCredit}
-          prixInitial={estimation ? prixNetVendeur(estimation.details) : (bien.prix_affiche ?? bien.prix_bien ?? null)}
-          prixSource={estimation ? 'prix net vendeur de l’estimation' : bien.prix_affiche || bien.prix_bien ? 'prix de la fiche' : 'à saisir'}
+          prixInitial={
+            estimation
+              ? prixNetVendeur(estimation.details)
+              : (bien.prix_affiche ?? bien.prix_bien ?? null)
+          }
+          prixSource={
+            estimation
+              ? 'prix net vendeur de l’estimation'
+              : bien.prix_affiche || bien.prix_bien
+                ? 'prix de la fiche'
+                : 'à saisir'
+          }
           anneeConstruction={bien.annee_construction}
         />
         <section className='bg-card min-w-0 rounded-2xl border p-4 sm:p-5'>
           <h2 className='font-display text-[17px] font-semibold'>
-            Acquéreurs potentiels <span className='text-muted-foreground text-sm font-normal'>· {rapprochements.length}</span>
+            Acquéreurs potentiels{' '}
+            <span className='text-muted-foreground text-sm font-normal'>
+              · {rapprochements.length}
+            </span>
           </h2>
           <p className='text-muted-foreground mt-1 mb-3 text-xs'>
-            Prospects du tableau de pilotage dont la recherche correspond à ce bien. Budget comparé frais d’agence inclus (prix affiché, sinon net vendeur
-            + honoraires du barème Laforêt), prix retenu entre −15 % et +5 % du budget.
+            Prospects du tableau de pilotage dont la recherche correspond à ce bien. Budget comparé
+            frais d’agence inclus (prix affiché, sinon net vendeur + honoraires du barème Laforêt),
+            prix retenu entre −15 % et +5 % du budget.
           </p>
-          <RapprochementsListe rapprochements={rapprochements} vide='Aucun acquéreur correspondant pour le moment. Importez le tableau de pilotage depuis la page Prospects.' />
+          <RapprochementsListe
+            rapprochements={rapprochements}
+            vide='Aucun acquéreur correspondant pour le moment. Importez le tableau de pilotage depuis la page Prospects.'
+          />
         </section>
       </div>
       <BienForm
         bienId={id}
         initial={initial}
         initialNa={(bien.fiche_na as string[] | null) ?? []}
-        initialPieces={(pieces ?? []).map((p) => ({
-          ...p,
-          longueur: p.longueur === null ? null : Number(p.longueur),
-          largeur: p.largeur === null ? null : Number(p.largeur),
-          surface: p.surface === null ? null : Number(p.surface)
-        })) as PieceInput[]}
-        initialVendeur={contact ? { civilite: contact.civilite, nom: contact.nom, prenom: contact.prenom, email: contact.email, portable: contact.portable, telephone_fixe: contact.telephone_fixe } : null}
+        initialPieces={
+          (pieces ?? []).map((p) => ({
+            ...p,
+            longueur: p.longueur === null ? null : Number(p.longueur),
+            largeur: p.largeur === null ? null : Number(p.largeur),
+            surface: p.surface === null ? null : Number(p.surface)
+          })) as PieceInput[]
+        }
+        initialVendeur={
+          contact
+            ? {
+                civilite: contact.civilite,
+                nom: contact.nom,
+                prenom: contact.prenom,
+                email: contact.email,
+                portable: contact.portable,
+                telephone_fixe: contact.telephone_fixe
+              }
+            : null
+        }
         vendeurId={contact?.id ?? null}
         analyse={analyse}
       />
