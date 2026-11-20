@@ -114,6 +114,15 @@ classif_projet `court_terme | moyen_terme | long_terme`. Champs Laforêt non mod
 - Un champ peut être déclaré « Inconnu / sans objet » (colonne `biens.fiche_na`), sauf la surface habitable.
 - La même liste de champs sert au formulaire, à la validation Zod et au brouillon renvoyé par l'IA.
 
+## Travail à plusieurs (Julien et David)
+- Ne jamais pousser sur `main` : `main` = production (déploiement Vercel automatique). Toujours créer une branche
+  (`julien/<sujet>` ou `david/<sujet>`), committer, pousser la branche et ouvrir une pull request ; David relit et fusionne.
+- Chaque pull request a sa version de test Vercel (« Preview ») : la donner à tester avant fusion.
+- Pas de migration SQL appliquée par soi-même : écrire le fichier dans `supabase/migrations/` et le signaler dans la PR ;
+  David l'exécute dans Supabase.
+- Ne jamais committer `.env.local`, de clé API, de mot de passe ni de données de clients ou de prospects.
+- Avant de proposer une PR : `npx tsc --noEmit -p .` sans erreur, et `npx oxfmt --write` sur les fichiers modifiés.
+
 ## Conventions
 - Interface en français.
 - Icônes uniquement via `@/components/icons`.
