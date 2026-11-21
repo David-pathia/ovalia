@@ -29,6 +29,15 @@ classif_projet `court_terme | moyen_terme | long_terme`. Champs Laforêt non mod
   avis à demander (biens sous offre) ; acquéreurs sans contact depuis 45 j (`projets.date_contact`).
 - Boîte mail : dernier tri lu dans le localStorage (`ovalia.tri-boite`, même clé que la page Boîte mail).
 
+## Note vocale (src/features/note, /dashboard/note)
+- Bouton « Note » dans l'en-tête (toutes les pages) et page `/dashboard/note` (gros bouton, ouverte par l'icône du téléphone).
+- Enregistrement et transcription repris de la dictée (`/api/dictee`), puis `lireNote` → `src/lib/ai/note.ts` : actions datées
+  (type de tâche, date/heure calculées depuis « demain », « jeudi »…), biens et contacts reconnus par numéro dans une liste
+  fournie (jamais d'identifiant venu de l'IA). Le conseiller coche / corrige, puis `enregistrerNote` crée les `taches`.
+  Sans IA ou en cas d'échec : la note entière devient une tâche « Note vocale à traiter » (rien n'est perdu).
+- Installable sur l'écran d'accueil : `app/manifest.ts` (start_url `/dashboard/note`), icônes `app/icon.tsx` et `app/apple-icon.tsx`
+  (publiques dans `PUBLIC_PATHS`). Pas de raccourci Siri pour l'instant (il faudrait une clé personnelle, donc une migration).
+
 ## Estimation (src/lib/estimation)
 - `dvf.ts` (serveur) : Base Adresse Nationale → commune INSEE, communes à < 8 km (geo.api.gouv.fr),
   ventes DVF géolocalisées (files.data.gouv.fr/geo-dvf, CSV par commune et par année, cache 1 semaine) ; l'estimation

@@ -2,7 +2,8 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 // /site : site public de Julien Ossedat (aucune donnée privée, aucun accès à la base).
-const PUBLIC_PATHS = ['/connexion', '/auth', '/site'];
+// /icon et /apple-icon : icônes de l'écran d'accueil, demandées par le téléphone sans session.
+const PUBLIC_PATHS = ['/connexion', '/auth', '/site', '/icon', '/apple-icon'];
 
 function isPublic(pathname: string) {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));

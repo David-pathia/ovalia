@@ -80,7 +80,9 @@ export async function chargerJournee(supabase: SupabaseClient): Promise<Journee>
   const [tachesR, biensR, rapprochementsR, projetsR, syncR] = await Promise.all([
     supabase
       .from('taches')
-      .select('id, titre, detail, type, echeance, faite_at, bien_id, contact_id')
+      .select(
+        'id, titre, detail, type, echeance, faite_at, bien_id, contacts(nom, prenom, portable)'
+      )
       .or(`faite_at.is.null,faite_at.gte.${new Date(Date.now() - 86_400_000).toISOString()}`)
       .order('echeance', { ascending: true, nullsFirst: false })
       .limit(200),
@@ -151,7 +153,7 @@ export async function chargerJournee(supabase: SupabaseClient): Promise<Journee>
   const actions: ActionJour[] = [];
 
   // 1. Tâches saisies.
-  for (const t of (tachesR.data ?? []) as {
+  for (const t of (tachesR.data ?? []) as unknown as {
     id: string;
     titre: string;
     detail: string | null;
@@ -159,6 +161,7 @@ export async function chargerJournee(supabase: SupabaseClient): Promise<Journee>
     echeance: string | null;
     faite_at: string | null;
     bien_id: string | null;
+    contacts: Contact | null;
   }[]) {
     const quand = t.echeance ? enParis(t.echeance) : null;
     const faite = !!t.faite_at;
@@ -171,11 +174,15 @@ export async function chargerJournee(supabase: SupabaseClient): Promise<Journee>
         moment: faite ? 'jour' : quand ? momentDe(quand.date, jour) : 'jour',
         nature: (NATURES_TACHE.includes(t.type) ? t.type : 'autre') as Nature,
         titre: t.titre,
-        detail: [t.detail, bien ? titreBien(bien) : null].filter(Boolean).join(' · ') || null,
+        detail:
+          [t.detail, bien ? titreBien(bien) : null, t.contacts ? nomComplet(t.contacts) : null]
+            .filter(Boolean)
+            .join(' · ') || null,
         date: quand?.date ?? null,
         heure: quand && quand.heure !== '00:00' ? quand.heure : null,
         href: bien ? `/dashboard/biens/${bien.id}` : null,
         lien: bien ? 'Fiche du bien' : null,
+        telephone: t.contacts?.portable ?? (bien ? (vendeurs(bien)[0]?.portable ?? null) : null),
         geste: { type: 'tache', tacheId: t.id, faite }
       })
     );
