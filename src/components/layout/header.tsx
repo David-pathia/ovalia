@@ -3,6 +3,7 @@ import { Separator } from '../ui/separator';
 import { Breadcrumbs } from '../breadcrumbs';
 import SearchInput from '../search-input';
 import { ThemeModeToggle } from '../themes/theme-mode-toggle';
+import { BoutonNote } from '@/features/note/components/bouton-note';
 
 export default function Header() {
   return (
@@ -17,6 +18,7 @@ export default function Header() {
         <div className='hidden md:flex'>
           <SearchInput />
         </div>
+        <BoutonNote />
         <ThemeModeToggle />
       </div>
     </header>

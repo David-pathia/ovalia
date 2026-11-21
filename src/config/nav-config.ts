@@ -10,6 +10,13 @@ export const navGroups: NavGroup[] = [
     items: [
       { title: "Aujourd'hui", url: '/dashboard', icon: 'today', shortcut: ['a', 'a'], items: [] },
       {
+        title: 'Note vocale',
+        url: '/dashboard/note',
+        icon: 'mic',
+        shortcut: ['n', 'n'],
+        items: []
+      },
+      {
         title: 'Saisie rapide',
         url: '/dashboard/saisie',
         icon: 'sparkles',

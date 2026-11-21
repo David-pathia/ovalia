@@ -23,7 +23,9 @@ export const metadata: Metadata = {
     template: '%s · Ovalia'
   },
   description: 'Poste de pilotage immobilier : biens, clients, estimations et assistants IA.',
-  robots: { index: false, follow: false }
+  robots: { index: false, follow: false },
+  // Installée sur l'écran d'accueil de l'iPhone : plein écran, nom court.
+  appleWebApp: { capable: true, title: 'Ovalia', statusBarStyle: 'black' }
 };
 
 export const viewport: Viewport = {
