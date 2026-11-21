@@ -20,6 +20,15 @@ Valeurs Laforêt : statut `estimation | avant_premiere | mandat_en_cours | sous_
 type_mandat `favoriz | simple` ; type `appartement | maison | immeuble | terrain | garage | local` ;
 classif_projet `court_terme | moyen_terme | long_terme`. Champs Laforêt non modélisés → `laforet_extra` (jsonb).
 
+## Aujourd'hui (src/features/today, /dashboard)
+- Une seule feuille de route, classée En retard / Aujourd'hui / Cette semaine / À anticiper (heure de Paris, `dates.ts`).
+  Collecte dans `data.ts` (serveur) ; rien n'est stocké en dehors des tâches : une action disparaît quand le dossier change.
+- Sources : tâches (`taches`, ajout rapide, cocher, reporter à demain) ; relances vendeurs (`biens.prochain_contact`,
+  boutons +7 / +15 / +30 j) ; fins de mandat (`mandat_fin`, 30 j avant et après) ; rapprochements « nouveau » ≥ 70 % groupés
+  par bien (Contacté / Écarter) ; avis de valeur à préparer puis relance 10 j après sans mandat ; témoignages à valider et
+  avis à demander (biens sous offre) ; acquéreurs sans contact depuis 45 j (`projets.date_contact`).
+- Boîte mail : dernier tri lu dans le localStorage (`ovalia.tri-boite`, même clé que la page Boîte mail).
+
 ## Estimation (src/lib/estimation)
 - `dvf.ts` (serveur) : Base Adresse Nationale → commune INSEE, communes à < 8 km (geo.api.gouv.fr),
   ventes DVF géolocalisées (files.data.gouv.fr/geo-dvf, CSV par commune et par année, cache 1 semaine) ; l'estimation
