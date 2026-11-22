@@ -17,6 +17,8 @@ import { EstimationPanel, type EstimationView } from '@/features/biens/component
 import type { EstimationDetails } from '@/lib/estimation/estimer';
 import { FinancementPanel } from '@/features/credit/components/financement-panel';
 import { PhotoPrincipale, type PhotoBien } from '@/features/photos/components/photo-principale';
+import { DocumentsBien } from '@/features/pieces-jointes/components/documents-bien';
+import { documentsDuBien } from '@/features/pieces-jointes/dossier';
 import { RapprochementsListe } from '@/features/prospects/components/rapprochements-liste';
 import { chargerRapprochements } from '@/features/prospects/data';
 import { retoucheIAConfiguree } from '@/lib/ai/image';
@@ -139,6 +141,8 @@ export default async function BienPage({ params }: Props) {
           ? 'Renseignez la ville ou le code postal puis enregistrez la fiche : l’estimation se lancera seule.'
           : null;
 
+  const documents = user ? await documentsDuBien(supabase, user.id, id) : [];
+
   const titre = [
     libelle(TYPES_BIEN, bien.type),
     bien.pieces ? `${bien.pieces} pièces` : null,
@@ -183,6 +187,7 @@ export default async function BienPage({ params }: Props) {
             iaDisponible={retoucheIAConfiguree()}
           />
         )}
+        <DocumentsBien bienId={id} documents={documents} />
         <EstimationPanel
           key={estimation?.id ?? 'aucune'}
           bienId={id}

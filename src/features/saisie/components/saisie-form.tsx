@@ -29,6 +29,8 @@ import { analyserNote, enregistrerBien } from '../actions';
 import { BoutonDictee } from '@/features/dictee/components/bouton-dictee';
 import { DicteeFiche } from '@/features/dictee/components/dictee-fiche';
 import type { Analyse, Extraction } from '../schema';
+import { BoutonPieces, ListePieces } from '@/features/pieces-jointes/components/pieces-jointes';
+import type { PieceJointe } from '@/features/pieces-jointes/types';
 
 type Vendeur = NonNullable<Extraction['vendeur']>;
 
@@ -75,12 +77,15 @@ export function SaisieForm() {
   const [error, setError] = useState<string | null>(null);
   const [tente, setTente] = useState(false);
   const [analysing, startAnalyse] = useTransition();
+  // Pièces jointes déposées avant que le bien existe : rangées dans son dossier à l'enregistrement.
+  const [brouillon] = useState(() => `brouillons/${crypto.randomUUID()}`);
+  const [jointes, setJointes] = useState<PieceJointe[]>([]);
   const [saving, startSave] = useTransition();
 
   const analyse = () => {
     setError(null);
     startAnalyse(async () => {
-      const res = await analyserNote(note);
+      const res = await analyserNote(note, jointes);
       if (!res.ok) return setError(res.error);
       setBien(valeursDepuisBrouillon(res.data.bien));
       setPieces(
@@ -108,10 +113,18 @@ export function SaisieForm() {
         <Section
           title='1. Collez ou dictez la note'
           aside={
-            <BoutonDictee
-              libelle={note.trim() ? 'Dicter la suite' : 'Dicter la note'}
-              onTexte={(t) => setNote((n) => (n.trim() ? `${n.trim()}\n${t}` : t))}
-            />
+            <div className='flex flex-wrap gap-2'>
+              <BoutonPieces
+                dossier={brouillon}
+                nombre={jointes.length}
+                onAjout={(p) => setJointes((j) => [...j, ...p])}
+                disabled={analysing}
+              />
+              <BoutonDictee
+                libelle={note.trim() ? 'Dicter la suite' : 'Dicter la note'}
+                onTexte={(t) => setNote((n) => (n.trim() ? `${n.trim()}\n${t}` : t))}
+              />
+            </div>
           }
         >
           <Label htmlFor='note' className='sr-only'>
@@ -128,8 +141,18 @@ export function SaisieForm() {
           <p className='text-muted-foreground mt-2 text-xs'>
             Suivez de préférence la fiche d’estimation Laforêt : tout ce qui manque devra être
             complété avant l’enregistrement. Le bouton « Dicter » transcrit votre voix dans la note
-            (2 minutes par dictée, vous pouvez enchaîner).
+            (2 minutes par dictée, vous pouvez enchaîner). « Joindre des fichiers » ajoute des
+            photos (appareil photo ou galerie) et des PDF : DPE, taxe foncière, plans, diagnostics…
+            L’IA les lit avec la note et ils sont gardés dans le dossier du bien.
           </p>
+          {jointes.length > 0 && (
+            <div className='mt-3'>
+              <ListePieces
+                pieces={jointes}
+                onRetirer={(c) => setJointes((j) => j.filter((p) => p.chemin !== c))}
+              />
+            </div>
+          )}
           {error && (
             <p role='alert' className='text-crit mt-3 text-sm'>
               {error}
@@ -138,12 +161,13 @@ export function SaisieForm() {
           <div className='mt-4 flex justify-end'>
             <Button
               onClick={analyse}
-              disabled={analysing || note.trim().length < 10}
+              disabled={analysing || (note.trim().length < 10 && !jointes.length)}
               className='h-10 px-4 font-semibold'
             >
               {analysing ? (
                 <>
-                  <Icons.spinner className='animate-spin' /> Analyse en cours…
+                  <Icons.spinner className='animate-spin' />{' '}
+                  {jointes.length ? 'Lecture de la note et des pièces…' : 'Analyse en cours…'}
                 </>
               ) : (
                 <>
@@ -181,7 +205,8 @@ export function SaisieForm() {
           vendeur: vendeur.nom.trim() ? vendeur : null,
           analyse: lecture
         },
-        note
+        note,
+        jointes
       );
       if (res.ok) {
         toast.success('Bien enregistré, estimation DVF en cours');
@@ -200,6 +225,8 @@ export function SaisieForm() {
             setBien(b);
             setPieces(ps);
           }}
+          dossier={brouillon}
+          onPieces={(p) => setJointes((j) => [...j, ...p])}
         />
 
         <Section title='Le bien' className={cn(tente && typeManquant && 'border-crit/50')}>
@@ -333,6 +360,18 @@ export function SaisieForm() {
             partir des ventes DVF.
           </p>
         </div>
+
+        {jointes.length > 0 && (
+          <Section title={`Pièces jointes (${jointes.length})`}>
+            <ListePieces
+              pieces={jointes}
+              onRetirer={(c) => setJointes((j) => j.filter((p) => p.chemin !== c))}
+            />
+            <p className='text-muted-foreground mt-2 text-xs'>
+              Rangées dans le dossier du bien à l’enregistrement ; les photos rejoignent ses photos.
+            </p>
+          </Section>
+        )}
 
         {lecture.a_verifier.length > 0 && (
           <section className='border-cuivre/40 bg-cuivre/10 rounded-2xl border p-4 sm:p-5'>

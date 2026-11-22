@@ -70,3 +70,24 @@ export async function demanderTexteLong(
     texte: response.content.map((b) => (b.type === 'text' ? b.text : '')).join('')
   };
 }
+
+export type BlocContenu = Anthropic.Beta.Messages.BetaContentBlockParam;
+
+/** Appel Claude avec un contenu riche (texte + photos + PDF), pour lire les pièces jointes d'un dossier. */
+export async function demanderContenu(system: string, contenu: BlocContenu[]) {
+  const response = await anthropicClient()
+    .beta.messages.stream({
+      model: MODEL,
+      max_tokens: 16000,
+      betas: ['server-side-fallback-2026-07-01'],
+      fallbacks: 'default',
+      output_config: { effort: 'medium' },
+      system,
+      messages: [{ role: 'user', content: contenu }]
+    })
+    .finalMessage();
+  return {
+    stopReason: response.stop_reason,
+    texte: response.content.map((b) => (b.type === 'text' ? b.text : '')).join('')
+  };
+}
