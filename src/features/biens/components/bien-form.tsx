@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Icons } from '@/components/icons';
 import { GroupFields, ManquantsPanel, ReleveTable, Section } from './fiche-fields';
 import { DicteeFiche } from '@/features/dictee/components/dictee-fiche';
+import { rattacherPieces } from '@/features/pieces-jointes/actions';
 import { cn } from '@/lib/utils';
 import { marquerPointVerifie, mettreAJourBien, supprimerBien } from '../actions';
 import {
@@ -139,6 +140,13 @@ export function BienForm({
             setPieces(ps);
             setDirty(true);
           }}
+          dossier={bienId}
+          onPieces={(jointes) =>
+            void rattacherPieces(bienId, jointes).then((r) => {
+              if (!r.ok) toast.error(r.error);
+              else router.refresh();
+            })
+          }
         />
 
         {BIEN_GROUPS.filter((g) => g.fiche).map((group) => (

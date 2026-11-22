@@ -102,6 +102,15 @@ classif_projet `court_terme | moyen_terme | long_terme`. Champs Laforêt non mod
   conseiller coche ; textes libres ajoutés à la suite, listes complétées, pièces ajoutées ou mises à jour. Rien n'est
   enregistré sans clic sur « Enregistrer ».
 
+## Pièces jointes (src/features/pieces-jointes)
+- Bouton « Joindre des fichiers » : saisie rapide (étape 1, à côté de « Dicter ») et panneau « Dicter ou joindre des
+  informations » (saisie étape 2 et fiche bien). Photos (converties en JPEG 2 000 px) et PDF (10 Mo max), 10 pièces par lecture.
+- Dépôt direct navigateur → bucket privé `biens` (actions serveur limitées à 1 Mo) : photos `<uid>/<bien>/<uuid>.jpg`
+  (+ `bien_images`), PDF `<uid>/<bien>/documents/<uuid8>-<nom>.pdf`. Pendant une saisie : `<uid>/brouillons/<uuid>/`,
+  rangées par `rangerPieces` à l'enregistrement. Aucune table : les documents sont listés depuis le stockage (`documentsDuBien`).
+- Lecture IA (`lecture.ts`, `demanderContenu`) : photos et PDF envoyés à Claude avec la note ou la dictée (20 Mo au total),
+  consigne `CONSIGNE_PIECES` (valeurs des documents reprises, déductions tirées des photos signalées à vérifier, la note prime).
+
 ## Prospects et rapprochements (src/features/prospects, src/lib/rapprochement)
 - Import du « tableau de pilotage » de Julien (onglet Prospection acheteur, `excel.ts` avec exceljs) depuis `/dashboard/prospects` :
   analyse → aperçu (nouveaux, modifiés, inchangés, absents) → validation. Reconnaissance par nom normalisé (`cleNom`) puis

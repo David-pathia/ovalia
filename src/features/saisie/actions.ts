@@ -5,9 +5,23 @@ import { revalidatePath } from 'next/cache';
 import { after } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
-import { MODEL, anthropicConfigured, demanderTexte, extraireJson } from '@/lib/ai/client';
+import {
+  MODEL,
+  anthropicConfigured,
+  demanderContenu,
+  demanderTexte,
+  extraireJson
+} from '@/lib/ai/client';
+import { CONSIGNE_PIECES, blocsPieces } from '@/features/pieces-jointes/lecture';
+import { rangerPieces } from '@/features/pieces-jointes/dossier';
+import { PiecesSchema } from '@/features/pieces-jointes/types';
 import { estimerBien } from '@/lib/estimation/estimer';
-import { BienUpdateSchema, PieceInputSchema, champsManquants, surfacePiece } from '@/features/biens/fields';
+import {
+  BienUpdateSchema,
+  PieceInputSchema,
+  champsManquants,
+  surfacePiece
+} from '@/features/biens/fields';
 import { AnalyseSchema, ExtractionSchema, VendeurSchema, type Extraction } from './schema';
 import { SYSTEM_PROMPT } from './prompt';
 
@@ -26,29 +40,50 @@ async function requireUser() {
   return { supabase, user };
 }
 
-export async function analyserNote(note: string): Promise<AnalyseResult> {
-  const { user } = await requireUser();
+export async function analyserNote(
+  note: string,
+  piecesJointes: unknown = []
+): Promise<AnalyseResult> {
+  const { supabase, user } = await requireUser();
   if (!user) return { ok: false, error: 'Session expirée : reconnectez-vous.' };
 
+  const p = PiecesSchema.safeParse(piecesJointes);
+  if (!p.success) return { ok: false, error: 'Pièces jointes invalides.' };
+  const pieces = p.data;
   const texte = note.trim();
-  if (texte.length < 10) return { ok: false, error: 'La note est trop courte pour être analysée.' };
+  if (texte.length < 10 && !pieces.length)
+    return { ok: false, error: 'La note est trop courte pour être analysée.' };
   if (texte.length > 20000) return { ok: false, error: 'La note dépasse 20 000 caractères.' };
   if (!anthropicConfigured()) {
     return { ok: false, error: 'La clé ANTHROPIC_API_KEY n’est pas configurée sur le serveur.' };
   }
 
   try {
-    const { stopReason, texte: reponse } = await demanderTexte(
-      `${SYSTEM_PROMPT}\n\nAnnée en cours : ${new Date().getFullYear()}.\n\n${FORMAT_REPONSE}`,
-      `Note du conseiller :\n\n${texte}`
-    );
+    const system = `${SYSTEM_PROMPT}\n\nAnnée en cours : ${new Date().getFullYear()}.`;
+    const consigneNote = `Note du conseiller :\n\n${texte || '(pas de note : tout vient des pièces jointes)'}`;
+    // Avec des pièces jointes (photos, PDF), elles sont lues en même temps que la note.
+    const { blocs } = pieces.length ? await blocsPieces(supabase, user.id, pieces) : { blocs: [] };
+    const { stopReason, texte: reponse } = blocs.length
+      ? await demanderContenu(`${system}\n\n${CONSIGNE_PIECES}\n\n${FORMAT_REPONSE}`, [
+          ...blocs,
+          { type: 'text', text: consigneNote }
+        ])
+      : await demanderTexte(`${system}\n\n${FORMAT_REPONSE}`, consigneNote);
     if (stopReason === 'refusal') {
-      return { ok: false, error: 'L’IA a refusé d’analyser cette note. Reformulez-la puis réessayez.' };
+      return {
+        ok: false,
+        error: 'L’IA a refusé d’analyser cette note. Reformulez-la puis réessayez.'
+      };
     }
-    if (stopReason === 'max_tokens') return { ok: false, error: 'La réponse de l’IA est incomplète. Réessayez.' };
+    if (stopReason === 'max_tokens')
+      return { ok: false, error: 'La réponse de l’IA est incomplète. Réessayez.' };
     const parsed = ExtractionSchema.safeParse(extraireJson(reponse));
     if (!parsed.success) {
-      console.error('Réponse IA non conforme', parsed.error.issues.slice(0, 5), reponse.slice(0, 500));
+      console.error(
+        'Réponse IA non conforme',
+        parsed.error.issues.slice(0, 5),
+        reponse.slice(0, 500)
+      );
       return { ok: false, error: 'La réponse de l’IA n’a pas le bon format. Réessayez.' };
     }
     return { ok: true, data: parsed.data };
@@ -66,7 +101,10 @@ export async function analyserNote(note: string): Promise<AnalyseResult> {
     }
     if (error instanceof Anthropic.APIError) {
       console.error('Anthropic', error.status, error.message);
-      return { ok: false, error: `Le service IA a répondu une erreur (${error.status}) : ${error.message}` };
+      return {
+        ok: false,
+        error: `Le service IA a répondu une erreur (${error.status}) : ${error.message}`
+      };
     }
     throw error;
   }
@@ -79,7 +117,11 @@ const SaveSchema = z.object({
   analyse: AnalyseSchema
 });
 
-export async function enregistrerBien(input: unknown, note: string): Promise<SaveResult> {
+export async function enregistrerBien(
+  input: unknown,
+  note: string,
+  piecesJointes: unknown = []
+): Promise<SaveResult> {
   const { supabase, user } = await requireUser();
   if (!user) return { ok: false, error: 'Session expirée : reconnectez-vous.' };
 
@@ -93,7 +135,10 @@ export async function enregistrerBien(input: unknown, note: string): Promise<Sav
   if (!valeurs.type) return { ok: false, error: 'Choisissez le type de bien avant d’enregistrer.' };
   const manquants = champsManquants(valeurs, ficheNa, pieces);
   if (manquants.length > 0) {
-    return { ok: false, error: `Fiche d’estimation incomplète : ${manquants.length} information(s) manquante(s).` };
+    return {
+      ok: false,
+      error: `Fiche d’estimation incomplète : ${manquants.length} information(s) manquante(s).`
+    };
   }
 
   const { data: created, error: bienError } = await supabase
@@ -103,7 +148,11 @@ export async function enregistrerBien(input: unknown, note: string): Promise<Sav
       fiche_na: ficheNa,
       statut: 'estimation',
       ville: typeof valeurs.ville === 'string' ? valeurs.ville.toUpperCase() : null,
-      suivi_par: valeurs.suivi_par ?? (user.user_metadata?.full_name as string | undefined) ?? user.email ?? null,
+      suivi_par:
+        valeurs.suivi_par ??
+        (user.user_metadata?.full_name as string | undefined) ??
+        user.email ??
+        null,
       laforet_extra: { source: 'saisie_rapide' }
     })
     .select('id')
@@ -119,14 +168,19 @@ export async function enregistrerBien(input: unknown, note: string): Promise<Sav
   const rollback = async (message: string, detail: unknown) => {
     console.error(message, detail);
     await supabase.from('biens').delete().eq('id', bienId);
-    return { ok: false as const, error: 'L’enregistrement a échoué, rien n’a été conservé. Réessayez.' };
+    return {
+      ok: false as const,
+      error: 'L’enregistrement a échoué, rien n’a été conservé. Réessayez.'
+    };
   };
 
   const releve = pieces.filter((p) => p.nom.trim());
   if (releve.length > 0) {
     const { error } = await supabase
       .from('bien_pieces')
-      .insert(releve.map((p, i) => ({ ...p, surface: surfacePiece(p), bien_id: bienId, ordre: i })));
+      .insert(
+        releve.map((p, i) => ({ ...p, surface: surfacePiece(p), bien_id: bienId, ordre: i }))
+      );
     if (error) return rollback('bien_pieces.insert', error);
   }
 
@@ -163,6 +217,13 @@ export async function enregistrerBien(input: unknown, note: string): Promise<Sav
     modele: MODEL
   });
   if (analyseError) return rollback('bien_analyses.insert', analyseError);
+
+  // Pièces jointes de la saisie : rangées dans le dossier du bien (les photos rejoignent ses photos).
+  const jointes = PiecesSchema.safeParse(piecesJointes);
+  if (jointes.success && jointes.data.length) {
+    const r = await rangerPieces(supabase, user.id, bienId, jointes.data);
+    if (r.echecs) console.warn('saisie.pieces', bienId, r.echecs, 'pièce(s) non rangée(s)');
+  }
 
   // Estimation DVF en arrière-plan : la fiche l'affiche dès qu'elle est prête.
   if (valeurs.ville || valeurs.code_postal) {
